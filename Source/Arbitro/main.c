@@ -7,43 +7,64 @@
 
 #include "main.h"
 
-int main (int argc, char *argv[])
-{
-    char *gamedir = '\0';
-    char *smaxplayers = '\0'; 
-    int maxplayers = 0;
 
+void perro(const char* str_error){
+    fprintf(stderr, "%s", str_error);
+}
+
+int main (int argc, char *argv[])
+{   
+    Helper helper;
+    Arbitro arbitro;
 
     if (argc < 3) {
-        perror("Missing arguments!\n");
+        perro("Missing arguments!\n");
         exit(EXIT_ERROR_ARGUMENTS);
     }
     
+// ################# CMD LINE ARGS ####################
+    if (atoi(argv[1]) <= 0 || atoi(argv[2]) <= 0){
+        perro("Invalid Arguments!\n");
+        exit(EXIT_INVALID_ARGUMENTS);
+    }
+
+    arbitro.duracao_campeonato = atoi(argv[1]);
+    arbitro.tempo_espera = atoi(argv[2]);
+
+    
+
+// ################# END CMD LINE ARGS ####################
+
+
+
+
     // ################# ENVIRONMENT VARS ####################
-    if ((gamedir = getenv("GAMEDIR")) == NULL) {
-        gamedir = GAMEDIR;
+    if ((arbitro.gamedir = getenv("GAMEDIR")) == NULL) {
+        arbitro.gamedir = GAMEDIR;
     }
 
 
-    smaxplayers = getenv("MAXPLAYERS");
+    helper.smaxplayers = getenv("MAXPLAYERS");
     
-    if (smaxplayers != NULL)  {
-        maxplayers = atoi(smaxplayers);
+    if (helper.smaxplayers != NULL)  {
+        arbitro.maxplayers = atoi(helper.smaxplayers);
     }
     else
     {
-        maxplayers = MAXPLAYERS;
+        arbitro.maxplayers = MAXPLAYERS;
     }
     
     // ################# END ENVIRONMENT VARS ####################
 
-    printf("Argc : %d GameDir: %s max players: %d\n", argc, gamedir, maxplayers);
+    printf("Nº args : %d GameDir: %s max players: %d\n"
+    "Duracao campeonato: %d Tempo espera: %d\n", argc, arbitro.gamedir, arbitro.maxplayers,
+     arbitro.duracao_campeonato, arbitro.tempo_espera);
     fflush(stdout);
 
     // Verify if exist arbitro in exec, by principal PIPE
     if (access(ARBITRO_PIPE, F_OK) == 0)
     {
-        perror("Server already in execution!\n");
+        perro("Server already in execution!\n");
         exit(EXIT_ERROR_PIPE);
     }
 
@@ -51,7 +72,7 @@ int main (int argc, char *argv[])
     // S_IRWXU - read,  write,  and  execute permission
     if (mkfifo(ARBITRO_PIPE, S_IRWXU) == -1)
     {
-        perror("Error: Creating Pipe! \n");
+        perro("Error: Creating Pipe! \n");
         exit(EXIT_ERROR_PIPE);
     }
 
@@ -72,7 +93,7 @@ int main (int argc, char *argv[])
 
 
     if (unlink(ARBITRO_PIPE) == -1){
-        perror("Error: Closing Pipe! \n");
+        perro("Error: Closing Pipe! \n");
         exit(EXIT_ERROR_PIPE);    
     }
 

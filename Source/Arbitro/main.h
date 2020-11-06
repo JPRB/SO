@@ -1,12 +1,16 @@
+#ifndef MAIN_H
+#define MAIN_H
 
-#define OK 0
-#define EXIT_ERROR_ARGUMENTS 1
-#define EXIT_ERROR_PIPE 2
-
-// Arbitro NAMED PIPE 
-#define ARBITRO_PIPE "arbitro_pipe"
+#include "../structs.h"
 
 // ENVIRONMENT VARS
 #define GAMEDIR "../GameDir/"
 
-#define MAXPLAYERS 10
+#define MAXPLAYERS 10 // < 30
+
+
+
+void perro(const char* str_error);
+
+
+#endif
