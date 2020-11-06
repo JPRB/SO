@@ -8,16 +8,13 @@
 #include "main.h"
 
 
-void perro(const char* str_error){
-    fprintf(stderr, "%s", str_error);
-}
 
 int main (int argc, char *argv[])
 {   
     Helper helper;
     Arbitro arbitro;
 
-    if (argc < 3) {
+    if (argc != 3) {
         perro("Missing arguments!\n");
         exit(EXIT_ERROR_ARGUMENTS);
     }
@@ -30,8 +27,6 @@ int main (int argc, char *argv[])
 
     arbitro.duracao_campeonato = atoi(argv[1]);
     arbitro.tempo_espera = atoi(argv[2]);
-
-    
 
 // ################# END CMD LINE ARGS ####################
 

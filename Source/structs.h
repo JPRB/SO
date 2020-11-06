@@ -52,4 +52,8 @@ typedef struct
 } Helper;
 
 
+void perro(const char* str_error){
+    fprintf(stderr, "%s", str_error);
+}
+
 #endif

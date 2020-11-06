@@ -9,8 +9,4 @@
 #define MAXPLAYERS 10 // < 30
 
 
-
-void perro(const char* str_error);
-
-
 #endif
