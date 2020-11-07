@@ -11,7 +11,7 @@ int main()
 
   while(i<5)
   {
-    int randomNUM = rand()
+    int randomNUM = rand();
 
     printf("Adivinhe o número gerado ...\n");
     scanf("%d\n",&bull );
@@ -27,5 +27,6 @@ int main()
   }
   printf("Parabens... acabou com %d pontos\n",&pontos); 
 
+strand(time(NULL));
 exit(pontos)
 }
