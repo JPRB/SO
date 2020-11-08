@@ -2,7 +2,7 @@ subDirs = $(Arbitro) $(Cliente) $(Jogo)
 Arbitro = Source/Arbitro
 Cliente = Source/Cliente 
 Jogo = Source/Jogo
-Build = Build/Arbitro Build/Cliente GameDir/*
+Build = Build/* GameDir/*
 Sources = Source/Arbitro/*.o Source/Cliente/*.o Source/Jogo/*.o
 
 #all 
