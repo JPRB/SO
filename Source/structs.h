@@ -46,9 +46,7 @@ typedef struct
 
 typedef struct
 {
-    char *smaxplayers; 
-    char *sduracao_campeonato;
-    char *stempo_espera; 
+    char *smaxplayers;
 } Helper;
 
 
