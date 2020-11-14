@@ -1,9 +1,7 @@
-subDirs = $(Arbitro) $(Cliente) $(Jogo)
+subDirs = $(Arbitro) $(Jogo) $(Cliente) 
 Arbitro = Source/Arbitro
 Cliente = Source/Cliente 
 Jogo = Source/Jogo
-Build = Build/* GameDir/*
-Sources = Source/Arbitro/*.o Source/Cliente/*.o Source/Jogo/*.o
 
 #all 
 all: $(subDirs)
@@ -23,8 +21,13 @@ arbitro: $(Arbitro)
 jogo: $(Jogo)
 	$(MAKE) -C $<
 
-.PHONY: all $(subDirs)
+.PHONY: clean
 
 #clean
-clean:
-	rm -f $(Build) $(Sources)
+clean: 
+	$(MAKE) -C $(Arbitro) clean
+	$(MAKE) -C $(Jogo) clean
+	$(MAKE) -C $(Cliente) clean
+
+# clean: $(subDirs)
+	#$(foreach i,$^,$(MAKE) -C  $i clean $(\n))
