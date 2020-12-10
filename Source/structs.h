@@ -2,10 +2,21 @@
 #ifndef STRUCTS_H
 #define STRUCTS_H
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <signal.h>
+#include <sys/wait.h>
+
+
 #define OK 0
 #define EXIT_ERROR_ARGUMENTS 1
 #define EXIT_INVALID_ARGUMENTS 2
 #define EXIT_ERROR_PIPE 3
+#define EXIT_ERROR_CREATE_PROCESS 4
 
 // Arbitro NAMED PIPE 
 #define ARBITRO_PIPE "arbitro_pipe"
@@ -36,7 +47,7 @@ typedef struct
 typedef struct
 {
     char nome[MAXCHARS];
-    int pid;
+    pid_t pid;
     int pontuacao;
     int *stdin;
     int *stdout;

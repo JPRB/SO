@@ -21,7 +21,7 @@ arbitro: $(Arbitro)
 jogo: $(Jogo)
 	$(MAKE) -C $<
 
-.PHONY: clean
+.PHONY: all $(subdirs) clean
 
 #clean
 clean: 

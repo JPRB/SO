@@ -1,12 +1,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <signal.h>
+
+int pontos = 0;
+
+
+void trataSinalExit (int sigNum) {
+  signal(sigNum, SIG_IGN);
+  exit(pontos);
+}
 
 
 int main()
 {
-  int pontos=0, num = 0;
+  int num = 0;
 
+  signal(SIGUSR1, trataSinalExit);
   setbuf(stdout, NULL);
 
   printf("BEM VINDO AO JOGO!\n");

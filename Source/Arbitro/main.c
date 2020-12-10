@@ -1,17 +1,33 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 
 #include "main.h"
+
+
+int getEnvironmentVars (Arbitro *arbitro, Helper *helper) {
+    if ((arbitro->gamedir = getenv("GAMEDIR")) == NULL) {
+        arbitro->gamedir = GAMEDIR;
+    }
+
+
+    helper->smaxplayers = getenv("MAXPLAYERS");
+    
+    if (helper->smaxplayers != NULL)  {
+        arbitro->maxplayers = atoi(helper->smaxplayers);
+    }
+    else
+    {
+        arbitro->maxplayers = MAXPLAYERS;
+    }
+}
+
 
 
 int main (int argc, char *argv[])
 {   
     Helper helper;
     Arbitro arbitro;
+    Jogo jogo;
+
+    int fd[2];
 
     if (argc != 3) {
         perro("Missing arguments!\n");
@@ -29,49 +45,54 @@ int main (int argc, char *argv[])
 
 // ################# END CMD LINE ARGS ####################
 
-
-
-
-    // ################# ENVIRONMENT VARS ####################
-    if ((arbitro.gamedir = getenv("GAMEDIR")) == NULL) {
-        arbitro.gamedir = GAMEDIR;
-    }
-
-
-    helper.smaxplayers = getenv("MAXPLAYERS");
+// ################# ENVIRONMENT VARS ####################
+    getEnvironmentVars(&arbitro, &helper);
+// ################# END ENVIRONMENT VARS ####################
     
-    if (helper.smaxplayers != NULL)  {
-        arbitro.maxplayers = atoi(helper.smaxplayers);
-    }
-    else
-    {
-        arbitro.maxplayers = MAXPLAYERS;
-    }
-    
-    // ################# END ENVIRONMENT VARS ####################
+    setbuf(stdout, NULL);
 
     printf("Nº args : %d GameDir: %s max players: %d\n"
     "Duracao campeonato: %d Tempo espera: %d\n", argc, arbitro.gamedir, arbitro.maxplayers,
      arbitro.duracao_campeonato, arbitro.tempo_espera);
     fflush(stdout);
 
-    // Verify if exist arbitro in exec, by principal PIPE
-    if (access(ARBITRO_PIPE, F_OK) == 0)
-    {
-        perro("Server already in execution!\n");
-        exit(EXIT_ERROR_PIPE);
+
+    if ((jogo.pid = fork()) == -1) {
+        perro("fork");
+        exit(EXIT_ERROR_CREATE_PROCESS);
     }
 
-    // mkfifo(3)
-    // S_IRWXU - read,  write,  and  execute permission
-    if (mkfifo(ARBITRO_PIPE, S_IRWXU) == -1)
-    {
-        perro("Error: Creating Pipe! \n");
-        exit(EXIT_ERROR_PIPE);
+    if (jogo.pid == 0) {    /* Child */
+        close(fd[0]);          /* Close unused read, not need*/
+        close(1); // stdout
+        dup(fd[1]); // Duplicate. (stdout -> fd[1] - write)
+        close(fd[1]);
+
+        execl(jogo.nome, jogo.nome, NULL);
+
+        exit(EXIT_SUCCESS);
+    }
+
+    close (fd[1]); /* Close unused write, not need*/
+
+
+    printf("Introduza o PID do processo a eliminar: ");
+    scanf("%d", &jogo.pid);
+
+    if (kill(jogo.pid, SIGUSR1) == -1) {
+        perro("Erro a enviar signal\n");
+    }
+
+    waitpid(jogo.pid, &jogo.pontuacao, 0);
+
+    // wait(&jogo.pontuacao);
+    if (WEXITSTATUS(jogo.pontuacao)) {
+        printf("Jogo Pontuação: %d", WEXITSTATUS(jogo.pontuacao));
     }
 
     
-    getchar();
+
+    
 
     /*
     int c;
