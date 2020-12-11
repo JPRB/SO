@@ -29,6 +29,9 @@ int main (int argc, char *argv[])
 
     int fd[2];
 
+
+    setbuf(stdout, NULL);
+
     if (argc != 3) {
         perro("Missing arguments!\n");
         exit(EXIT_ERROR_ARGUMENTS);
@@ -49,13 +52,14 @@ int main (int argc, char *argv[])
     getEnvironmentVars(&arbitro, &helper);
 // ################# END ENVIRONMENT VARS ####################
     
-    setbuf(stdout, NULL);
+    
 
     printf("Nº args : %d GameDir: %s max players: %d\n"
     "Duracao campeonato: %d Tempo espera: %d\n", argc, arbitro.gamedir, arbitro.maxplayers,
      arbitro.duracao_campeonato, arbitro.tempo_espera);
     fflush(stdout);
-
+    
+    // 
 
     if ((jogo.pid = fork()) == -1) {
         perro("fork");

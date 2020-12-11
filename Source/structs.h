@@ -18,6 +18,27 @@
 #define EXIT_ERROR_PIPE 3
 #define EXIT_ERROR_CREATE_PROCESS 4
 
+// ######## LIST OF ACTIONS ########
+
+#define LOGIN 100
+#define LOGOUT 101
+/*#define LOGIN
+#define LOGIN
+#define LOGIN
+#define LOGIN
+#define LOGIN
+#define LOGIN
+#define LOGIN
+#define LOGIN
+#define LOGIN
+#define LOGIN
+#define LOGIN
+#define LOGIN
+#define LOGIN
+#define LOGIN
+#define LOGIN
+*/
+
 // Arbitro NAMED PIPE 
 #define ARBITRO_PIPE "arbitro_pipe"
 
@@ -53,6 +74,12 @@ typedef struct
     int *stdout;
 } Jogo;
 
+
+typedef struct 
+{
+    int action;
+    Jogador jogador;
+} Champ;
 
 
 typedef struct
