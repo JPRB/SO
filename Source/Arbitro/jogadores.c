@@ -1,46 +1,22 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include "structs.h"
+
 #include "jogadores.h"
+#include "main.c"
 
-pJogador adicionarJogador(pJogador lista /*mais paramentros*/) {
-	pJogador q = malloc(sizeof(Jogador));
-	memset(q, '\0', sizeof(Jogador));
+void adicionarJogador(int pid, const char *username) {
 
-	if (q == NULL) {
-		printf("mensagem de erro\n");
-		return NULL;
-	}
-	//adicionar contador de jogadores
-	memset(q->pid, '\0', sizeof(q->pid));
-	strcpy(q->pid, pid);
-	strcpy(q->username, username);
-
-	if (lista == NULL) {
-		q->prox = lista;
-		lista = q;
-		
-		return lista;
-	}
-	else {
-		pJogador a = lista;
-		while (t->prox !=NULL)
-		{
-			t = t->prox;
-		}
-		t->prox = q;
-		return lista;
-	}
-
+	lista_jogadores[nr_users].pid = pid;
+    strcpy(lista_jogadores[nr_users].username, username);
+  	nr_users++;
 }
-pJogador removerJogador(pJogador lista, char* nome) {
+
+/*
+pJogador remove_Jogador(pJogador lista, const char* nome) {
 	pJogador aux = lista;
 	pJogador p = aux;
 
 	while (aux != NULL)
 	{
-		if (strcmp(aux->nome, nome) == 0) {
+		if (strcmp(aux->username, nome) == 0) {
 			if (aux == lista) {
 				lista = aux->prox;
 				free(aux);
@@ -60,39 +36,33 @@ pJogador removerJogador(pJogador lista, char* nome) {
 	return lista;
 
 }
-int verificarExiste(pJogador lista, char* nome) {
-	pJogador p = lista;
-	while (p != NULL)
-	{
-		if (strcmp(p->nome, nome) == 0) {
-			printf("jogador existente\n");
-			return true;
-		}
-		p = p->prox;
-	}
-	return 0;
-}
-pJogador getJogadorByName(pJogador lista, char* nome) {
-	pJogador p = lista;
-	while (p != NULL)
-	{
-		if (strcmp(nome, p->nome) == 0) {
-			return p;
-		}
 
-		p = p->prox;
+int existe_jogador(pJogador lista, const char* nome) {
+	if (getJogadorByName(lista, nome) != NULL)
+		return 1;
+
+	return 0;	
+}
+
+pJogador getJogadorByName(pJogador lista, const char* nome) {
+	if (lista != NULL) {
+		pJogador p = lista;
+		while (p != NULL)
+		{
+			if (strcmp(nome, p->username) == 0) {
+				return p;
+			}
+
+			p = p->prox;
+		}
 	}
 	return NULL;
 }
-void listaDeJogadores(pJogador lista) {
-	pJogador p = lista;
-	if (p == NULL)
-	{
-		printf("lista vazia.");
-	}
-	while (p =! NULL)
-	{
-		printf("NOME: %s\n", p->username);
-		p = p ->prox;
+*/
+
+void listar_jogadores() {
+	for (int i = 0; i < nr_users; i++) {
+		printf("Nome: %s Jogo: %s\n", lista_jogadores[i].username, lista_jogadores[i].nome_jogo);
+	
 	}
 }

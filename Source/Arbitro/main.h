@@ -2,6 +2,7 @@
 #define MAIN_H
 
 #include "../structs.h"
+#include "./jogadores.h"
 #include "../Utils.h"
 // ENVIRONMENT VARS
 #define GAMEDIR "../GameDir/"

@@ -1,6 +1,12 @@
 
 #include "main.h"
 
+int nr_users=0;
+Jogador lista_jogadores[30];
+Helper helper;
+Arbitro arbitro;
+Jogo jogo;
+
 
 int getEnvironmentVars (Arbitro *arbitro, Helper *helper) {
     if ((arbitro->gamedir = getenv("GAMEDIR")) == NULL) {
@@ -23,6 +29,7 @@ void arbitroCommands (const char* cmd){
 
     if (strcmp(cmd, "players") == 0){
         // TODO: listar jogadores (nome e jogo atribuido)
+        listar_jogadores();
     }
     else if (strcmp(cmd, "games") == 0) {
         // TODO: listar jogos disponiveis
@@ -48,9 +55,7 @@ void arbitroCommands (const char* cmd){
 
 int main (int argc, char *argv[])
 {   
-    Helper helper;
-    Arbitro arbitro;
-    Jogo jogo;
+   
 
     int fd[2];
     char cmd[50];
@@ -101,7 +106,15 @@ int main (int argc, char *argv[])
      arbitro.duracao_campeonato, arbitro.tempo_espera);
     fflush(stdout);
     
-     //ler comandos
+
+    // ############################ DEBUG ######################
+   
+    adicionarJogador(1234, "joao");
+    
+    
+    // ############################ DEBUG ######################
+
+    //ler comandos
     do
     {
         printf("> ");

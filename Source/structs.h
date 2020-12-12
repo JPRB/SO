@@ -55,6 +55,7 @@
 typedef struct
 {
     char username[MAXCHARS];
+    char nome_jogo[6];
     int pid;
     int pontuacao;
     int *stdin;
@@ -78,6 +79,7 @@ typedef struct
     int pontuacao;
     int *stdin;
     int *stdout;
+
 } Jogo;
 
 
