@@ -16,6 +16,45 @@ void listar_jogadores() {
 	}
 }
 
+void delete_user_by_PID(int pid) {
+  Jogador null_users = {{0}};
+
+  if (nr_users > 0) {
+    if (nr_users == 1) {
+    	lista_jogadores[0] = null_users;
+    	nr_users--;
+    } else {
+    	int i;
+    	for (i = 0; i < nr_users && lista_jogadores[i].pid != pid; i++);
+      	lista_jogadores[i] = lista_jogadores[nr_users - 1];
+      	nr_users--;
+    }
+  }
+}
+
+void delete_user_by_name(const char * name ){
+	for (int i = 0; i < nr_users; i++)
+	{
+		if (strcmp(lista_jogadores[i].username, name)) {
+			delete_user_by_PID(lista_jogadores[i].pid);
+			return;
+		}
+	}
+}
+
+
+int existe_jogador(const char* name) {
+	for (int i = 0; i < nr_users; i++)
+	{
+		if (strcmp(lista_jogadores[i].username, name)){
+			return 1;
+		}
+	}
+	return 0;	
+}
+
+
+
 /*
 pJogador remove_Jogador(pJogador lista, const char* nome) {
 	pJogador aux = lista;
@@ -44,7 +83,7 @@ pJogador remove_Jogador(pJogador lista, const char* nome) {
 
 }
 
-int existe_jogador(pJogador lista, const char* nome) {
+int existe_jogador(const char* nome) {
 	if (getJogadorByName(lista, nome) != NULL)
 		return 1;
 

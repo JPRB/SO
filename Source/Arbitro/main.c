@@ -53,6 +53,10 @@ void arbitroCommands (const char* cmd){
 }
 
 
+void init_campeonato() {
+    
+}
+
 int main (int argc, char *argv[])
 {   
    
@@ -111,6 +115,15 @@ int main (int argc, char *argv[])
     
     listar_jogadores();
     // ############################ DEBUG ######################
+
+    // ######## Aguardar por pelo menos 2 jogadores ############
+
+
+    // Wait tempo Max por mais jogadores 
+    // arbitro.tempo_espera
+
+    // ################## Inicio do Campeonato #################
+    init_campeonato();
 
     //ler comandos
     do
