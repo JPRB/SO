@@ -16,7 +16,9 @@ void listar_jogadores() {
 	}
 }
 
-void delete_user_by_PID(int pid) {
+/*  1 - Removed 
+	0 - Not found*/
+int delete_user_by_PID(int pid) {
   Jogador null_users = {{0}};
 
   if (nr_users > 0) {
@@ -32,10 +34,14 @@ void delete_user_by_PID(int pid) {
   }
 }
 
-void delete_user_by_name(const char * name ){
+/*  
+	1 - Removed 
+	0 - Not found
+*/
+int delete_user_by_name(const char * username ){
 	for (int i = 0; i < nr_users; i++)
 	{
-		if (strcmp(lista_jogadores[i].username, name)) {
+		if (strcmp(lista_jogadores[i].username, username)) {
 			delete_user_by_PID(lista_jogadores[i].pid);
 			return;
 		}
@@ -43,16 +49,24 @@ void delete_user_by_name(const char * name ){
 }
 
 
-int existe_jogador(const char* name) {
+int existe_jogador(const char* username) {
 	for (int i = 0; i < nr_users; i++)
 	{
-		if (strcmp(lista_jogadores[i].username, name)){
+		if (strcmp(lista_jogadores[i].username, username)){
 			return 1;
 		}
 	}
 	return 0;	
 }
 
+
+/* @return
+	pid - Found 
+	-1 - Not found
+*/
+int get_pid_By_username(const char *username) {
+
+}
 
 
 /*

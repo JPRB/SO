@@ -28,9 +28,9 @@
 
 #define LOGIN 100
 #define LOGOUT 101
+#define LOGGED 102
+#define KICK 105
 /*#define LOGIN
-#define LOGIN
-#define LOGIN
 #define LOGIN
 #define LOGIN
 #define LOGIN

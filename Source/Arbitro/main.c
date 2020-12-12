@@ -25,6 +25,30 @@ int getEnvironmentVars (Arbitro *arbitro, Helper *helper) {
     }
 }
 
+void kick_user (const char *name) {
+    int fd_user, pid;
+    char pipe[11];
+    Champ send;
+
+    
+    pid = get_pid_By_username(name);
+    // verificar se existe
+
+    // se não existir
+    sprintf(pipe, "pipe-%d", pid);
+
+    fd_user = open(pipe, O_WRONLY);
+
+    if (fd_user == -1)
+    {
+        perro("Erro a abrir o Arbitro Pipe!!\n A terminar...\n");
+        exit(EXIT_ERROR_PIPE);
+    }
+
+    send.action = KICK;
+    write(fd_user, &send, sizeof(send));
+}
+
 void arbitroCommands (const char* cmd){
 
     if (strcmp(cmd, "players") == 0){
@@ -54,7 +78,7 @@ void arbitroCommands (const char* cmd){
 
 
 void init_campeonato() {
-    
+    // Atribuir a cada jogador, um jogo
 }
 
 int main (int argc, char *argv[])
@@ -117,10 +141,10 @@ int main (int argc, char *argv[])
     // ############################ DEBUG ######################
 
     // ######## Aguardar por pelo menos 2 jogadores ############
-
+    while (nr_users < 2);    
 
     // Wait tempo Max por mais jogadores 
-    // arbitro.tempo_espera
+    sleep(arbitro.tempo_espera);
 
     // ################## Inicio do Campeonato #################
     init_campeonato();
