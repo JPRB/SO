@@ -10,7 +10,18 @@ int logIn = 0;
 
 
 void userCommands (const char* comm){
-    printf("O meu nome e: %s \n", comm);
+
+    switch (*comm)
+    {
+        case '#mygame':
+        
+            break;
+
+        default:
+            break;
+    }
+
+    printf("Comando: %s \n", comm);
 }
 
 
@@ -32,7 +43,7 @@ void login (int *fd_arbitro, Champ *send) {
 int main (int argc, char *argv[]) {
 
     Champ champ;
-    char car, *cmd;
+    char car, comm[50];
 
     // nome do pipe
     char pipe[11];
@@ -46,7 +57,7 @@ int main (int argc, char *argv[]) {
         exit(EXIT_ERROR_ARGUMENTS);
     }
 
-    // Verify if server is already Running
+    // TODO: Verify if server is already Running
 
 
     //Create client pipe 
@@ -61,23 +72,20 @@ int main (int argc, char *argv[]) {
 
     // ########### LOGIN ###############
     strcpy(champ.jogador.username, argv[1]);
-    login (&fd_arbitro, &champ);
+    //login (&fd_arbitro, &champ);
     
 
   
 
-
-
     //ler comandos
-    //scanf("%c", car);
+    do
+    {
+        printf("> ");
+        scanf(" %50[^\n]s", comm);
+        userCommands(comm);
 
-   // if (strcmp(car, '#'))
-   // {   
-
-        //userCommands(var);
-  //  }
-
-
+    } while (strcmp(comm, "#quit") != 0);
+    
 
     printf("O meu nome e: %s \n", champ.jogador.username);
     // fflush(stdout);

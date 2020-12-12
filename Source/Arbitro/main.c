@@ -19,6 +19,31 @@ int getEnvironmentVars (Arbitro *arbitro, Helper *helper) {
     }
 }
 
+void arbitroCommands (const char* cmd){
+
+    if (strcmp(cmd, "players") == 0){
+        // TODO: listar jogadores (nome e jogo atribuido)
+    }
+    else if (strcmp(cmd, "games") == 0) {
+        // TODO: listar jogos disponiveis
+    }
+    else if (strcmp(cmd[0], 'k') == 0) {
+        // TODO: kick user (e.g: krui - remove jogador 'rui') 
+        // dar feedBack ao user
+    }
+    else if (strcmp(cmd[0], 's') == 0) {
+        // TODO: mensagens jogador-jogo ficam suspensas (e.g: srui ) 
+    }
+    else if (strcmp(cmd[0], 'r') == 0) {
+        // TODO: retomar comunicação jogador-jogo (e.g: rrui ) 
+    }
+    else if (strcmp(cmd, "end") == 0) {
+        // TODO: Encerrar o campeonato
+    }
+
+    // #DEBUG
+    printf("Comando: %s \n", cmd);
+}
 
 
 int main (int argc, char *argv[])
@@ -28,7 +53,7 @@ int main (int argc, char *argv[])
     Jogo jogo;
 
     int fd[2];
-
+    char cmd[50];
 
     setbuf(stdout, NULL);
 
@@ -36,8 +61,24 @@ int main (int argc, char *argv[])
         perro("Missing arguments!\n");
         exit(EXIT_ERROR_ARGUMENTS);
     }
+
+    // ######### Arbitro PIPE ################
+    if (access(ARBITRO_PIPE, F_OK) == 0)
+    {
+        perro("Arbitro already in execution!\n");
+        exit(EXIT_ERROR_PIPE);
+    }
+
+     // mkfifo(3)
+    // S_IRWXU - read,  write,  and  execute permission
+    if (mkfifo(ARBITRO_PIPE, S_IRWXU) == -1)
+    {
+        perro("Error: Creating Pipe! \n");
+        exit(EXIT_ERROR_PIPE);
+    }
+
     
-// ################# CMD LINE ARGS ####################
+// ################# VALIDATE ARGS ####################
     if (atoi(argv[1]) <= 0 || atoi(argv[2]) <= 0){
         perro("Invalid Arguments!\n");
         exit(EXIT_INVALID_ARGUMENTS);
@@ -46,12 +87,13 @@ int main (int argc, char *argv[])
     arbitro.duracao_campeonato = atoi(argv[1]);
     arbitro.tempo_espera = atoi(argv[2]);
 
-// ################# END CMD LINE ARGS ####################
+// ################# END VALIDATE ARGS ####################
 
 // ################# ENVIRONMENT VARS ####################
     getEnvironmentVars(&arbitro, &helper);
 // ################# END ENVIRONMENT VARS ####################
     
+
     
 
     printf("Nº args : %d GameDir: %s max players: %d\n"
@@ -59,15 +101,24 @@ int main (int argc, char *argv[])
      arbitro.duracao_campeonato, arbitro.tempo_espera);
     fflush(stdout);
     
-    // 
+     //ler comandos
+    do
+    {
+        printf("> ");
+        scanf(" %50[^\n]s", cmd);
+        arbitroCommands(cmd);
+
+    } while (strcmp(cmd, "exit") != 0);
+    
+/*
 
     if ((jogo.pid = fork()) == -1) {
         perro("fork");
         exit(EXIT_ERROR_CREATE_PROCESS);
     }
 
-    if (jogo.pid == 0) {    /* Child */
-        close(fd[0]);          /* Close unused read, not need*/
+    if (jogo.pid == 0) {    // Child 
+        close(fd[0]);          // Close unused read, not need
         close(1); // stdout
         dup(fd[1]); // Duplicate. (stdout -> fd[1] - write)
         close(fd[1]);
@@ -77,7 +128,7 @@ int main (int argc, char *argv[])
         exit(EXIT_SUCCESS);
     }
 
-    close (fd[1]); /* Close unused write, not need*/
+    close (fd[1]); // Close unused write, not need
 
 
     printf("Introduza o PID do processo a eliminar: ");
@@ -93,23 +144,9 @@ int main (int argc, char *argv[])
     if (WEXITSTATUS(jogo.pontuacao)) {
         printf("Jogo Pontuação: %d", WEXITSTATUS(jogo.pontuacao));
     }
-
-    
-
-    
-
-    /*
-    int c;
-  while ((c = getopt (argc, argv, "")) != -1) {
-    printf("Argc : %d ARGV:", argc);
-    fflush(stdout);
-
-    for (int i=0; i < argc; i++)
-        printf("%s", argv[i]);
-        fflush(stdout);
-  }
+  
 */
-
+    
 
     if (unlink(ARBITRO_PIPE) == -1){
         perro("Error: Closing Pipe! \n");

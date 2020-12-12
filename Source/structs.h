@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -17,6 +18,11 @@
 #define EXIT_INVALID_ARGUMENTS 2
 #define EXIT_ERROR_PIPE 3
 #define EXIT_ERROR_CREATE_PROCESS 4
+
+
+
+
+
 
 // ######## LIST OF ACTIONS ########
 
@@ -90,6 +96,11 @@ typedef struct
 
 void perro(const char* str_error){
     fprintf(stderr, "%s", str_error);
+}
+
+void perro_exit(const char* str_error, int error_no) {
+    perro(str_error);
+    exit(error_no);
 }
 
 #endif
