@@ -2,7 +2,7 @@
 # $< - Dependency filename
 
 CC = gcc
-SOURCES = main.c
+SOURCES = ../utils.c jogadores.c main.c  
 CFLAGS = -std=c99
 #  Macro - For each (Transform each source.c in source.o)
 OBJ = $(SOURCES:.c=.o)

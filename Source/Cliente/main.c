@@ -27,16 +27,16 @@ void userCommands (const char* comm){
 
 void login (int *fd_arbitro, Champ *send) {
 
-    fd_arbitro = open(ARBITRO_PIPE, O_RDWR);
+    *fd_arbitro = open(ARBITRO_PIPE, O_RDWR);
 
-    if (fd_arbitro == -1)
+    if (*fd_arbitro == -1)
     {
         perro("Erro a abrir o Arbitro Pipe!!\n A terminar...\n");
         exit(EXIT_ERROR_PIPE);
     }
 
     send->action = LOGIN;
-    write(fd_arbitro, &send, sizeof(send));
+    write(*fd_arbitro, &send, sizeof(send));
 }
 
 
