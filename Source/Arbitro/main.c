@@ -52,15 +52,9 @@ void kick_user (const char *name) {
     }
     
 }
-/*char tokenK(){
-    char str[]= "krui";
-
-    char* token = strtok(str, "k");
-    printf("%s\n", token); //token é o nome do jogador a ser k
-    return token;
+int procuraChar(char palavra){
 
 }
-*/
 
 void user_login(int pid, const char * username) {
     int fd_user;
@@ -91,27 +85,38 @@ void user_login(int pid, const char * username) {
 
 void arbitroCommands (const char* cmd){
     char *aux;
+    char k[]="k";
+    char r[]="r";
+    char s[]="s";
 
     if (strcmp(cmd, "players") == 0){
         // TODO: listar jogadores (nome e jogo atribuido)
         listar_jogadores();
     }
-    else if (strcmp(cmd, "games") == 0) {
+    else if (strcmp(cmd, "#mygames") == 0) {
         // TODO: listar jogos disponiveis
     }
-    else if (cmd[0] == 'k') {
-        aux = strchr(cmd, 'k'); //1*parametro string a separar. 2* separador. dá return da string depois do separador aparecer 
-        printf("%s", aux);
+    else if (cmd[1] == 'k'){
+        aux = strtok(cmd, "k");
+
+        strrev(aux);
+        strcat(aux, k);
+        strrev(aux);
+         
         kick_user(aux);
-        // TODO: kick user (e.g: krui - remove jogador 'rui') 
-        // dar feedBack ao user
+        else if(cmd[0] == "k")
+        {
+            aux = strtok(cmd, "k");
+            kick_user(aux);
+        }
+        
     }
     else if (cmd[0] == 's') {
-        aux = strchr(cmd, 's');
+        aux = strtok(cmd, 's');
         // TODO: mensagens jogador-jogo ficam suspensas (e.g: srui ) 
     }
     else if (cmd[0] == 'r') {
-        aux = strchr(cmd, 'r');
+        aux = strtok(cmd, 'r');
         // TODO: retomar comunicação jogador-jogo (e.g: rrui ) 
     }
     else if(strcmp(cmd, "end") == 0){
@@ -220,8 +225,10 @@ int main (int argc, char *argv[])
     //READ commands
     do
     {
+
         printf("> ");
         scanf(" %50[^\n]s", cmd);
+        cmd[strlen(cmd)-1] = '\0'; 
         arbitroCommands(cmd);
 
 
