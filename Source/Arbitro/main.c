@@ -32,24 +32,41 @@ void kick_user (const char *name) {
 
     
     pid = get_pid_By_username(name);
-    // verificar se existe
-
-    // se não existir
-    sprintf(pipe, "pipe-%d", pid);
-
-    fd_user = open(pipe, O_WRONLY);
-
-    if (fd_user == -1)
+    if(existe_jogador(name) == 1)
     {
-        perro("Erro a abrir o Arbitro Pipe!!\n A terminar...\n");
-        exit(EXIT_ERROR_PIPE);
-    }
+        delete_user_by_name(name);
+    
+        sprintf(pipe, "pipe-%d", pid);
 
-    send.action = KICK;
-    write(fd_user, &send, sizeof(send));
+        fd_user = open(pipe, O_WRONLY);
+
+        if (fd_user == -1)
+        {
+            perro("Erro a abrir o Arbitro Pipe!!\n A terminar...\n");
+            exit(EXIT_ERROR_PIPE);
+        }
+
+        send.action = KICK;
+        write(fd_user, &send, sizeof(send));
+    }
+    else
+    {
+        printf("Jogador inexistente.\n");
+    }
+    
 }
+/*char tokenK(){
+    char str[]= "krui";
+
+    char* token = strtok(str, "k");
+    printf("%s\n", token); //token é o nome do jogador a ser k
+    return token;
+
+}
+*/
 
 void arbitroCommands (const char* cmd){
+    char *aux;
 
     if (strcmp(cmd, "players") == 0){
         // TODO: listar jogadores (nome e jogo atribuido)
@@ -58,18 +75,27 @@ void arbitroCommands (const char* cmd){
     else if (strcmp(cmd, "games") == 0) {
         // TODO: listar jogos disponiveis
     }
-    else if (cmd[0] == 'k') {
+    else if (cmd[0] == 'k'){
+        aux = strchr(cmd, 'k'); //1*parametro string a separar. 2* separador. dá return da string depois do separador aparecer 
+        
+        kick_user(aux);
         // TODO: kick user (e.g: krui - remove jogador 'rui') 
         // dar feedBack ao user
     }
     else if (cmd[0] == 's') {
+        aux = strchr(cmd, 's');
         // TODO: mensagens jogador-jogo ficam suspensas (e.g: srui ) 
     }
     else if (cmd[0] == 'r') {
+        aux = strchr(cmd, 'r');
         // TODO: retomar comunicação jogador-jogo (e.g: rrui ) 
     }
-    else if (strcmp(cmd, "end") == 0) {
+    else if (strcmp(cmd, "exit") == 0) {
+        exit(0);
         // TODO: Encerrar o campeonato
+    }
+    else if(strcmp(cmd, "end") == 0){
+        //
     }
 
     // #DEBUG
@@ -152,9 +178,12 @@ int main (int argc, char *argv[])
     //ler comandos
     do
     {
+
         printf("> ");
         scanf(" %50[^\n]s", cmd);
+        cmd[strlen(cmd)-1] = '\0'; 
         arbitroCommands(cmd);
+
 
     } while (strcmp(cmd, "exit") != 0);
     
