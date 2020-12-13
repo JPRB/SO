@@ -2,7 +2,7 @@
 
 
 void adicionarJogador(int pid, const char *username) {
-
+	
 	lista_jogadores[nr_users].pid = pid;
     strcpy(lista_jogadores[nr_users].username, username);
   	nr_users++;
@@ -41,7 +41,7 @@ int delete_user_by_PID(int pid) {
 int delete_user_by_name(const char * username ){
 	for (int i = 0; i < nr_users; i++)
 	{
-		if (strcmp(lista_jogadores[i].username, username)) {
+		if (strcmp(lista_jogadores[i].username, username) == 0) {
 			delete_user_by_PID(lista_jogadores[i].pid);
 			return;
 		}
@@ -52,7 +52,7 @@ int delete_user_by_name(const char * username ){
 int existe_jogador(const char* username) {
 	for (int i = 0; i < nr_users; i++)
 	{
-		if (strcmp(lista_jogadores[i].username, username)){
+		if (strcmp(lista_jogadores[i].username, username) == 0){
 			return 1;
 		}
 	}
@@ -65,6 +65,14 @@ int existe_jogador(const char* username) {
 	-1 - Not found
 */
 int get_pid_By_username(const char *username) {
+	
+	for (int i = 0; i < nr_users; i++)
+	{
+		if (strcmp(lista_jogadores[i].username, username) == 0){
+			return lista_jogadores[i].pid;
+		}
+	}
+	return -1;	
 
 }
 
