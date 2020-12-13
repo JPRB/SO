@@ -38,7 +38,7 @@ int delete_user_by_PID(int pid) {
 	1 - Removed 
 	0 - Not found
 */
-int delete_user_by_name(const char * username ){
+int delete_user_by_name(const char * username ) { 
 	for (int i = 0; i < nr_users; i++)
 	{
 		if (strcmp(lista_jogadores[i].username, username) == 0) {
@@ -48,7 +48,10 @@ int delete_user_by_name(const char * username ){
 	}
 }
 
-
+/* @return
+	1 - Found 
+	0 - Not found
+*/
 int existe_jogador(const char* username) {
 	for (int i = 0; i < nr_users; i++)
 	{

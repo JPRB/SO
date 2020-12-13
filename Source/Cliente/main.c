@@ -1,15 +1,11 @@
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
 #include "main.h"
 
 
-int logIn = 0;
+int logged = 0;
 
 
-void userCommands (const char* comm){
+void userCommands (const char* comm) {
 
     switch (*comm)
     {
@@ -24,6 +20,27 @@ void userCommands (const char* comm){
     printf("Comando: %s \n", comm);
 }
 
+int ServerExecution() {
+    
+    if (access(ARBITRO_PIPE, F_OK) != 0)
+    {
+        return 0;
+    }
+
+   return 1;
+
+/*
+     // mkfifo(3)
+    // S_IRWXU - read,  write,  and  execute permission
+    if (mkfifo(ARBITRO_PIPE, S_IRWXU) == -1)
+    {
+        //perro("Error: Creating Pipe! \n");
+        exit(EXIT_ERROR_PIPE);
+    }
+*/
+
+}
+
 
 void login (int *fd_arbitro, Champ *send) {
 
@@ -31,12 +48,12 @@ void login (int *fd_arbitro, Champ *send) {
 
     if (*fd_arbitro == -1)
     {
-        perro("Erro a abrir o Arbitro Pipe!!\n A terminar...\n");
+        //perro("Erro a abrir o Arbitro Pipe!!\n A terminar...\n");
         exit(EXIT_ERROR_PIPE);
     }
 
     send->action = LOGIN;
-    write(*fd_arbitro, &send, sizeof(send));
+    write(*fd_arbitro, send, sizeof(*send));
 }
 
 
@@ -48,17 +65,20 @@ int main (int argc, char *argv[]) {
     // nome do pipe
     char pipe[11];
 
-    int fd_arbitro;
+    int fd_arbitro, fd_user;
 
     setbuf(stdout, NULL);
     
     if (argc != 2 ) {
-        perro("Missing arguments!\n");
+        //perro("Missing arguments!\n");
         exit(EXIT_ERROR_ARGUMENTS);
     }
 
     // TODO: Verify if server is already Running
-
+    if (!ServerExecution()){
+        //perro("Arbitro is not in execution!\n");
+        exit(EXIT_ERROR_PIPE);
+    }
 
     //Create client pipe 
     champ.jogador.pid = getpid();
@@ -66,26 +86,39 @@ int main (int argc, char *argv[]) {
 
     if (mkfifo(pipe, S_IRWXU) < 0)
     {
-        perro("Erro ao criar pipe. A sair...\n");
+        //perro("Erro ao criar pipe. A sair...\n");
         exit(EXIT_ERROR_PIPE);
     }
 
+   
     // ########### LOGIN ###############
     strcpy(champ.jogador.username, argv[1]);
-    //login (&fd_arbitro, &champ);
-    
+    login (&fd_arbitro, &champ);
 
-  
+    fd_user = open(pipe, O_RDWR);
 
-    //ler comandos
-    do
+    if (fd_user == -1)
     {
-        printf("> ");
-        scanf(" %50[^\n]s", comm);
-        userCommands(comm);
+        //perro("Erro a abrir o Cliente Pipe!!\n A terminar...\n");
+        exit(EXIT_ERROR_PIPE);
+    }
 
-    } while (strcmp(comm, "#quit") != 0);
+    read(fd_user, &champ, sizeof(champ));
     
+    if (champ.action == LOGGED)
+        logged = 1;
+
+
+    if (logged) {
+        //ler comandos
+        do
+        {
+            printf("> ");
+            scanf(" %50[^\n]s", comm);
+            userCommands(comm);
+
+        } while (strcmp(comm, "#quit") != 0);
+    }
 
     printf("O meu nome e: %s \n", champ.jogador.username);
     // fflush(stdout);

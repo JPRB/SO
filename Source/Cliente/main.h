@@ -4,4 +4,10 @@
 #include "../structs.h"
 #include "../utils.h"
 
+
+void login (int *fd_arbitro, Champ *send);
+void userCommands (const char* comm);
+
+extern int logged;
+
 #endif
