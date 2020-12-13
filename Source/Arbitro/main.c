@@ -99,9 +99,9 @@ void arbitroCommands (const char* cmd){
     else if (strcmp(cmd, "games") == 0) {
         // TODO: listar jogos disponiveis
     }
-    else if (cmd[0] == 'k'){
+    else if (cmd[0] == 'k') {
         aux = strchr(cmd, 'k'); //1*parametro string a separar. 2* separador. dá return da string depois do separador aparecer 
-        
+        printf("%s", aux);
         kick_user(aux);
         // TODO: kick user (e.g: krui - remove jogador 'rui') 
         // dar feedBack ao user
@@ -220,10 +220,8 @@ int main (int argc, char *argv[])
     //READ commands
     do
     {
-
         printf("> ");
         scanf(" %50[^\n]s", cmd);
-        cmd[strlen(cmd)-1] = '\0'; 
         arbitroCommands(cmd);
 
 
