@@ -39,7 +39,7 @@ void kick_user (const char *name) {
 
         if (fd_user == -1)
         {
-            perro("Erro a abrir o Arbitro Pipe!!\n A terminar...\n");
+            perro("Erro a abrir o Cliente Pipe!!\n");
             exit(EXIT_ERROR_PIPE);
         }
 
@@ -75,21 +75,24 @@ void user_login(int pid, const char * username) {
 
         if (fd_user == -1)
         {
-            //perro("Erro a abrir o Arbitro Pipe!!\n A terminar...\n");
+            perro("Erro a abrir o Cliente Pipe!!\n");
             //exit(EXIT_ERROR_PIPE);
         }
 
         adicionarJogador(pid, username);
     
         send.action = LOGGED;
+        strcpy(send.jogador.username, username);
     }
     else 
     { send.action = FAIL_LOGIN; }
     
     write(fd_user, &send, sizeof(send));
+    
+    close(fd_user);
 }
 
-void arbitroCommands (const char* cmd){
+void arbitroCommands (char* cmd){
     char *aux;
 
     if (strcmp(cmd, "players") == 0){
@@ -100,18 +103,17 @@ void arbitroCommands (const char* cmd){
         // TODO: listar jogos disponiveis
     }
     else if (cmd[0] == 'k') {
-        aux = strchr(cmd, 'k'); //1*parametro string a separar. 2* separador. dá return da string depois do separador aparecer 
-        printf("%s", aux);
+        aux = strtok(cmd, "k");
         kick_user(aux);
         // TODO: kick user (e.g: krui - remove jogador 'rui') 
         // dar feedBack ao user
     }
     else if (cmd[0] == 's') {
-        aux = strchr(cmd, 's');
+        aux = strtok(cmd, "s");
         // TODO: mensagens jogador-jogo ficam suspensas (e.g: srui ) 
     }
     else if (cmd[0] == 'r') {
-        aux = strchr(cmd, 'r');
+        aux = strtok(cmd, "r");
         // TODO: retomar comunicação jogador-jogo (e.g: rrui ) 
     }
     else if(strcmp(cmd, "end") == 0){
@@ -200,7 +202,6 @@ int main (int argc, char *argv[])
     
 
     // ######## Aguardar por pelo menos 2 jogadores ############
-    
     while (nr_users <= 2) {
         
         read(fd, &champ, sizeof(champ));

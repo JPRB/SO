@@ -3,22 +3,12 @@
 
 
 int logged = 0;
+// Condição de paragem de thread
+int stop = 0;
+
+Champ receive;
 
 
-void userCommands (const char* comm) {
-
-    switch (*comm)
-    {
-        case '#mygame':
-        
-            break;
-
-        default:
-            break;
-    }
-
-    printf("Comando: %s \n", comm);
-}
 
 int ServerExecution() {
     
@@ -28,17 +18,49 @@ int ServerExecution() {
     }
 
    return 1;
+}
 
-/*
-     // mkfifo(3)
-    // S_IRWXU - read,  write,  and  execute permission
-    if (mkfifo(ARBITRO_PIPE, S_IRWXU) == -1)
+void forced_shutdown() {
+  char pipe[11];
+
+  sprintf(pipe, "pipe-%d", getpid());
+  unlink(pipe);
+  exit(SHUTDOWN);
+}
+
+
+
+void shutdown() {
+    char pipe[11];
+    int fd;
+    Champ shut;
+
+    shut.jogador.pid = getpid();
+    shut.action = LOGOUT;
+
+    sprintf(pipe, "pipe-%d", getpid());
+
+    fd = open(ARBITRO_PIPE, O_WRONLY, 0600);
+    
+    write(fd, &shut, sizeof(shut));
+    unlink(pipe);
+    exit(SHUTDOWN);
+}
+
+
+
+
+void userCommands (const char* comm) {
+
+    if (strcmp(comm, "#mygame") == 0)
     {
-        //perro("Error: Creating Pipe! \n");
-        exit(EXIT_ERROR_PIPE);
+        // TODO:
     }
-*/
+    else if (strcmp(comm, "#quit") == 0) {
+        shutdown();
+    }
 
+    printf("Comando: %s \n", comm);
 }
 
 
@@ -57,11 +79,50 @@ void login (int *fd_arbitro, Champ *send) {
 }
 
 
+
+
+// THREAD
+void *receiver(void *arg)
+{
+  char pipe[11];
+  int fd_pipe;
+  int nBytes;
+  sprintf(pipe, "pipe-%d", getpid());
+
+  fd_pipe = open(pipe, O_RDWR);
+
+  do
+  {
+    nBytes = read(fd_pipe, &receive, sizeof(receive));
+
+    if (nBytes == 0)
+        stop = 1;
+    //printf("Li %d bytes\n", nBytes);
+    //printf("%d", receive.action);
+    switch (receive.action)
+    {
+        case KICK: /* kick */
+            printf("O Arbitro kickou-o\nA terminar... \n");
+            forced_shutdown();
+            break;
+    }
+
+  } while (stop == 0);
+
+  close(fd_pipe);
+  unlink(pipe);
+  pthread_exit(NULL);
+}
+
+
+
 int main (int argc, char *argv[]) {
 
+    pthread_t thread;
     Champ champ;
-    char car, comm[50];
 
+    char car, comm[50];
+    
     // nome do pipe
     char pipe[11];
 
@@ -100,6 +161,7 @@ int main (int argc, char *argv[]) {
     if (fd_user == -1)
     {
         //perro("Erro a abrir o Cliente Pipe!!\n A terminar...\n");
+        unlink(pipe);
         exit(EXIT_ERROR_PIPE);
     }
 
@@ -108,24 +170,42 @@ int main (int argc, char *argv[]) {
     if (champ.action == LOGGED)
         logged = 1;
 
+    // ########### END LOGIN ###############
 
     if (logged) {
-        //ler comandos
-        do
+
+         // Create Thread
+        int create_thread = pthread_create(&thread, NULL, receiver, NULL);
+
+        if (create_thread != 0)
         {
+            printf("Erro a criar a thread!!!\nA terminar..\n");
+            unlink(pipe);
+            exit(EXIT_ERROR_CREATE_THREAD);
+        }
+
+
+        //ler comandos
+        while(1) {
+
             printf("> ");
             scanf(" %50[^\n]s", comm);
             userCommands(comm);
-
-        } while (strcmp(comm, "#quit") != 0);
+        } 
+    
     }
 
-    printf("O meu nome e: %s \n", champ.jogador.username);
-    // fflush(stdout);
+        printf("O meu nome e: %s \n", champ.jogador.username);
+        // fflush(stdout);
+        write(fd_user, &champ, sizeof(champ));
 
-    // ### Close pipes #####
-    close(fd_arbitro);
-    unlink(pipe);
+        // #### Closing THREAD
+        pthread_join(thread, NULL);
+
+    
+        // ### Close pipes #####
+        close(fd_arbitro);
+        unlink(pipe);
 
 
     exit(OK);

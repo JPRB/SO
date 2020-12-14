@@ -4,6 +4,7 @@
 #include "../structs.h"
 #include "../utils.h"
 
+#include <pthread.h>
 
 void login (int *fd_arbitro, Champ *send);
 void userCommands (const char* comm);
