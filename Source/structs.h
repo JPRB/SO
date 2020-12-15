@@ -91,12 +91,4 @@ typedef struct
 } Champ;
 
 
-typedef struct
-{
-    char *smaxplayers;
-} Helper;
-
-
-
-
 #endif

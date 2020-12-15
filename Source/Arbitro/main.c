@@ -5,16 +5,18 @@ int nr_users;
 Jogador lista_jogadores[30];
 
 
-int getEnvironmentVars (Arbitro *arbitro, Helper *helper) {
+int getEnvironmentVars (Arbitro *arbitro) {
+
+     char *smaxplayers;
     if ((arbitro->gamedir = getenv("GAMEDIR")) == NULL) {
         arbitro->gamedir = GAMEDIR;
     }
 
 
-    helper->smaxplayers = getenv("MAXPLAYERS");
+    smaxplayers = getenv("MAXPLAYERS");
     
-    if (helper->smaxplayers != NULL)  {
-        arbitro->maxplayers = atoi(helper->smaxplayers);
+    if (smaxplayers != NULL)  {
+        arbitro->maxplayers = atoi(smaxplayers);
     }
     else
     {
@@ -131,7 +133,6 @@ void init_campeonato() {
 
 int main (int argc, char *argv[])
 {   
-    Helper helper;
     Arbitro arbitro;
     Jogo jogo;
     Champ champ;
@@ -184,13 +185,6 @@ int main (int argc, char *argv[])
     fflush(stdout);
     
 
-    // ############################ DEBUG ######################
-   
-    adicionarJogador(1234, "joao");
-    
-    listar_jogadores();
-    // ############################ DEBUG ######################
-
     // OPEN ARBITRO PIPE
     fd = open(ARBITRO_PIPE, O_RDONLY);
 
@@ -209,7 +203,7 @@ int main (int argc, char *argv[])
             user_login(champ.jogador.pid, champ.jogador.username);
         }
         // DEBUG
-        printf("username %s pid : %d\n Action: %d\n\n", champ.jogador.username, champ.jogador.pid, champ.action);
+        //printf("username %s pid : %d\n Action: %d\n\n", champ.jogador.username, champ.jogador.pid, champ.action);
     }
 
     // Wait tempo Max por mais jogadores 
