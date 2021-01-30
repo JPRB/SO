@@ -13,7 +13,6 @@
 
 extern int nr_users;
 extern Jogador lista_jogadores[30];
-extern Helper helper;
 extern Arbitro arbitro;
 extern Jogo jogo;
 

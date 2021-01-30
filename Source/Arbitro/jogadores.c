@@ -43,9 +43,10 @@ int delete_user_by_name(const char * username ) {
 	{
 		if (strcmp(lista_jogadores[i].username, username) == 0) {
 			delete_user_by_PID(lista_jogadores[i].pid);
-			return;
+			return 1;
 		}
 	}
+	return 0;
 }
 
 /* @return

@@ -6,7 +6,7 @@
 
 #include <pthread.h>
 
-void login (int *fd_arbitro, Champ *send);
+void login (int *fd_arbitro);
 void userCommands (const char* comm);
 
 extern int logged;

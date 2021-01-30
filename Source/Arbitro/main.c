@@ -2,6 +2,8 @@
 #include "main.h"
 
 int nr_users;
+int can_login = 1;
+int stopThread = 0;
 Jogador lista_jogadores[30];
 
 
@@ -27,16 +29,13 @@ int getEnvironmentVars (Arbitro *arbitro) {
 void kick_user (const char *name) {
     int fd_user, pid;
     char pipe[11];
-    Champ send;
-
-    
+    ClientStruct send;
 
     if((pid = get_pid_By_username(name)) != -1)
     {
         delete_user_by_name(name);
     
         sprintf(pipe, "pipe-%d", pid);
-
         fd_user = open(pipe, O_WRONLY);
 
         if (fd_user == -1)
@@ -45,8 +44,11 @@ void kick_user (const char *name) {
             exit(EXIT_ERROR_PIPE);
         }
 
+        // dar feedBack ao user
         send.action = KICK;
         write(fd_user, &send, sizeof(send));
+
+        close(fd_user);
     }
     else
     {
@@ -54,6 +56,15 @@ void kick_user (const char *name) {
     }
     
 }
+
+void kick_all_users() {
+
+    for (int i=nr_users; nr_users != 0; i--) {
+        char *nome = lista_jogadores[i].username;
+        kick_user(nome);
+    }
+}
+
 /*char tokenK(){
     char str[]= "krui";
 
@@ -67,34 +78,41 @@ void kick_user (const char *name) {
 void user_login(int pid, const char * username) {
     int fd_user;
     char pipe[11];
-    Champ send;
+    ClientStruct send;
     
-    if (!existe_jogador(username))
+    sprintf(pipe, "pipe-%d", pid);
+
+    fd_user = open(pipe, O_RDWR);
+    if (fd_user == -1)
     {
-        sprintf(pipe, "pipe-%d", pid);
-        
-        fd_user = open(pipe, O_RDWR);
-
-        if (fd_user == -1)
-        {
-            perro("Erro a abrir o Cliente Pipe!!\n");
-            //exit(EXIT_ERROR_PIPE);
-        }
-
-        adicionarJogador(pid, username);
-    
-        send.action = LOGGED;
-        strcpy(send.jogador.username, username);
+        perro("Erro a abrir o Cliente Pipe!!\n");
+        //exit(EXIT_ERROR_PIPE);
     }
-    else 
-    { send.action = FAIL_LOGIN; }
-    
+
+    if (can_login)
+    {
+        if (!existe_jogador(username))
+        {
+            adicionarJogador(pid, username);
+        
+            send.action = LOGGED;
+            strcpy(send.str, username);
+        }
+        else 
+        {   
+            send.action = FAIL_LOGIN;
+        } 
+    }
+    else {
+        send.action = CHAMPIONSHIP_ALREADY_STARTED;
+    }
+
     write(fd_user, &send, sizeof(send));
-    
+        
     close(fd_user);
 }
 
-void arbitroCommands (char* cmd){
+void arbitroCommands (const char* cmd) {
     char *aux;
 
     if (strcmp(cmd, "players") == 0){
@@ -105,37 +123,101 @@ void arbitroCommands (char* cmd){
         // TODO: listar jogos disponiveis
     }
     else if (cmd[0] == 'k') {
-        aux = strtok(cmd, "k");
+        // kick user (e.g: krui - remove jogador 'rui') 
+        aux = cmd[1];
         kick_user(aux);
-        // TODO: kick user (e.g: krui - remove jogador 'rui') 
-        // dar feedBack ao user
+        
     }
     else if (cmd[0] == 's') {
-        aux = strtok(cmd, "s");
+        aux = cmd[1];
         // TODO: mensagens jogador-jogo ficam suspensas (e.g: srui ) 
     }
     else if (cmd[0] == 'r') {
-        aux = strtok(cmd, "r");
+        aux = cmd[1];
         // TODO: retomar comunicação jogador-jogo (e.g: rrui ) 
     }
-    else if(strcmp(cmd, "end") == 0){
+    else if(strcmp(cmd, "end") == 0) {
         // TODO: Encerrar o campeonato
     }
+    else if(strcmp(cmd, "exit") == 0) {
+        kick_all_users();
+    }
+    else if(strcmp(cmd, "init") == 0) {
+        init_campeonato();
+    }
+    
+    
+    printf("- users nr. %d - \n", nr_users);
 
     // #DEBUG
     printf("Comando: %s \n", cmd);
 }
 
-
 void init_campeonato() {
     // Atribuir a cada jogador, um jogo
+
+    
 }
+
+
+void *thread_func(void *arg) {
+    ClientStruct receive;
+
+    int fd, fd_send;
+    char pipe[11];
+
+    mkfifo(ARBITRO_PIPE, 0600);
+    // OPEN ARBITRO PIPE
+    fd = open(ARBITRO_PIPE, O_RDWR);
+
+    if (fd == -1)
+    {
+        perro("Erro a abrir o Arbitro Pipe!!\n A terminar...\n");
+        exit(EXIT_ERROR_PIPE);
+    }
+
+     do {
+        read(fd, &receive, sizeof(receive));
+
+        sprintf(pipe, "pipe-%d", receive.pid);
+        fd_send = open(pipe, O_WRONLY, 0600);
+
+        switch (receive.action) {
+            case LOGIN: 
+                user_login(receive.pid, receive.str);
+                break;
+            case LOGOUT:
+                delete_user_by_PID(receive.pid);
+                break;
+        }
+    } while (!stopThread);
+  
+}
+
+
+void *campeonato(void *arg) {
+    Arbitro *arbitro = (Arbitro *) arg;
+
+    // ######## Aguardar por pelo menos 2 jogadores ############
+    while (nr_users < 2);
+
+    sleep(arbitro->tempo_espera);
+
+    // Var de controlo para não poderem logar...
+    can_login = 0;
+
+    // ################## Inicio do Campeonato #################
+    init_campeonato();
+}
+
 
 int main (int argc, char *argv[])
 {   
     Arbitro arbitro;
     Jogo jogo;
-    Champ champ;
+    ClientStruct champ;
+
+    pthread_t thread, threadCampeonato;
 
     int fd_game[2], fd;
     char cmd[50];
@@ -146,10 +228,8 @@ int main (int argc, char *argv[])
         perro("Missing arguments!\n");
         exit(EXIT_ERROR_ARGUMENTS);
     }
-
-   
     
-// ################# VALIDATE ARGS ####################
+    // ################# VALIDATE ARGS ####################
     if (atoi(argv[1]) <= 0 || atoi(argv[2]) <= 0){
         perro("Invalid Arguments!\n");
         exit(EXIT_INVALID_ARGUMENTS);
@@ -158,11 +238,11 @@ int main (int argc, char *argv[])
     arbitro.duracao_campeonato = atoi(argv[1]);
     arbitro.tempo_espera = atoi(argv[2]);
 
-// ################# END VALIDATE ARGS ####################
+    // ################# END VALIDATE ARGS ####################
 
-// ################# ENVIRONMENT VARS ####################
-    getEnvironmentVars(&arbitro, &helper);
-// ################# END ENVIRONMENT VARS ####################
+    // ################# ENVIRONMENT VARS ####################
+    getEnvironmentVars(&arbitro);
+    // ################# END ENVIRONMENT VARS ####################
     
      // ######### Arbitro PIPE ################
     if (access(ARBITRO_PIPE, F_OK) == 0)
@@ -184,33 +264,23 @@ int main (int argc, char *argv[])
      arbitro.duracao_campeonato, arbitro.tempo_espera);
     fflush(stdout);
     
+    // TODO : Ler o diretorio de jogos, criar array estático de jogos [nome]
 
-    // OPEN ARBITRO PIPE
-    fd = open(ARBITRO_PIPE, O_RDONLY);
-
-    if (fd == -1)
+    // CREATE THREAD To RECEIVE FROM USERS
+    if (pthread_create(&thread, NULL, thread_func, NULL) != 0)
     {
-        perro("Erro a abrir o Arbitro Pipe!!\n A terminar...\n");
-        exit(EXIT_ERROR_PIPE);
-    }
-    
-
-    // ######## Aguardar por pelo menos 2 jogadores ############
-    while (nr_users <= 2) {
-        
-        read(fd, &champ, sizeof(champ));
-        if (champ.action == LOGIN) {
-            user_login(champ.jogador.pid, champ.jogador.username);
-        }
-        // DEBUG
-        //printf("username %s pid : %d\n Action: %d\n\n", champ.jogador.username, champ.jogador.pid, champ.action);
+        printf("Erro a criar a thread!!!\nA terminar..\n");
+        unlink(ARBITRO_PIPE);
+        exit(EXIT_ERROR_CREATE_THREAD);
     }
 
-    // Wait tempo Max por mais jogadores 
-    sleep(arbitro.tempo_espera);
-
-    // ################## Inicio do Campeonato #################
-    init_campeonato();
+    // CREATE THREAD To Init CHAMPIONSHIP
+    /*if (pthread_create(&threadCampeonato, NULL, campeonato, (void *) &arbitro) != 0)
+    {
+        printf("Erro a criar a thread!!!\nA terminar..\n");
+        unlink(ARBITRO_PIPE);
+        exit(EXIT_ERROR_CREATE_THREAD);
+    }*/
 
     //READ commands
     do
@@ -219,9 +289,32 @@ int main (int argc, char *argv[])
         scanf(" %50[^\n]s", cmd);
         arbitroCommands(cmd);
 
-
     } while (strcmp(cmd, "exit") != 0);
     
+
+    /*do {
+        
+        read(fd, &champ, sizeof(champ));
+        if (champ.action == LOGIN) {
+            user_login(champ.jogador.pid, champ.jogador.username);
+        }
+        // DEBUG
+        //printf("username %s pid : %d\n Action: %d\n\n", champ.jogador.username, champ.jogador.pid, champ.action);
+        printf("nr users : %d\n", nr_users);
+    } while (nr_users < 2);
+
+    // Wait tempo Max por mais jogadores 
+    while (sleep(arbitro.tempo_espera) > 0) {
+        read(fd, &champ, sizeof(champ));
+        if (champ.action == LOGIN) {
+            user_login(champ.jogador.pid, champ.jogador.username);
+        }
+    }*/
+
+    // ################## Inicio do Campeonato #################
+    //init_campeonato();
+
+
 /*
 
     if ((jogo.pid = fork()) == -1) {
@@ -258,7 +351,6 @@ int main (int argc, char *argv[])
     }
   
 */
-    
 
     if (unlink(ARBITRO_PIPE) == -1){
         perro("Error: Closing Pipe! \n");

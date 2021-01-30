@@ -1,13 +1,10 @@
-subDirs = $(Arbitro) $(Jogo) $(Cliente) 
-Arbitro = Source/Arbitro
-Cliente = Source/Cliente 
-Jogo = Source/Jogo
+
+Arbitro=Source/Arbitro
+Cliente=Source/Cliente 
+Jogo=Source/Jogo
 
 #all 
-all: $(subDirs)
-
-$(subDirs):
-	$(MAKE) -C $@
+all: cliente arbitro jogo
 
 #cliente
 cliente: $(Cliente)
@@ -21,7 +18,7 @@ arbitro: $(Arbitro)
 jogo: $(Jogo)
 	$(MAKE) -C $<
 
-.PHONY: all $(subdirs) clean
+.PHONY: all clean
 
 #clean
 clean: 

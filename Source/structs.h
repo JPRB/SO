@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <signal.h>
 #include <sys/wait.h>
+#include <pthread.h>
 
 
 #define OK 0
@@ -30,6 +31,7 @@
 #define LOGOUT 101
 #define LOGGED 102
 #define FAIL_LOGIN 103
+#define CHAMPIONSHIP_ALREADY_STARTED 104
 #define KICK 105
 /*#define LOGIN
 #define LOGIN
@@ -49,18 +51,13 @@
 // Arbitro NAMED PIPE 
 #define ARBITRO_PIPE "arbitro_pipe"
 
-
-
 #define MAXCHARS 50
 
 typedef struct
 {
-    char username[MAXCHARS];
-    char nome_jogo[6];
     int pid;
-    int pontuacao;
-    int *stdin;
-    int *stdout;
+    char username[MAXCHARS];
+    Jogo jogo;
 } Jogador;
 
 
@@ -80,15 +77,17 @@ typedef struct
     int pontuacao;
     int *stdin;
     int *stdout;
-
 } Jogo;
 
 
 typedef struct 
 {
     int action;
+    int pid;
+    char cmd_1[255];
+    char str[255];
     Jogador jogador;
-} Champ;
+} ClientStruct;
 
 
 #endif

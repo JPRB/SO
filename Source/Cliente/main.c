@@ -6,7 +6,7 @@ int logged = 0;
 // Condição de paragem de thread
 int stop = 0;
 
-Champ receive;
+ClientStruct champ;
 
 
 
@@ -33,7 +33,7 @@ void forced_shutdown() {
 void shutdown() {
     char pipe[11];
     int fd;
-    Champ shut;
+    ClientStruct shut;
 
     shut.jogador.pid = getpid();
     shut.action = LOGOUT;
@@ -64,7 +64,7 @@ void userCommands (const char* comm) {
 }
 
 
-void login (int *fd_arbitro, Champ *send) {
+void login (int *fd_arbitro) {
 
     *fd_arbitro = open(ARBITRO_PIPE, O_RDWR);
 
@@ -74,44 +74,43 @@ void login (int *fd_arbitro, Champ *send) {
         exit(EXIT_ERROR_PIPE);
     }
 
-    send->action = LOGIN;
-    write(*fd_arbitro, send, sizeof(*send));
+    champ.action = LOGIN;
+    write(*fd_arbitro, &champ, sizeof(champ));
 }
-
-
-
 
 // THREAD
 void *receiver(void *arg)
 {
-  char pipe[11];
-  int fd_pipe;
-  int nBytes;
-  sprintf(pipe, "pipe-%d", getpid());
+    ClientStruct receive;
+    char pipe[11];
+    int fd_pipe;
+    int nBytes;
 
-  fd_pipe = open(pipe, O_RDWR);
+    sprintf(pipe, "pipe-%d", getpid());
+    fd_pipe = open(pipe, O_RDWR);
 
-  do
-  {
-    nBytes = read(fd_pipe, &receive, sizeof(receive));
-
-    if (nBytes == 0)
-        stop = 1;
-    //printf("Li %d bytes\n", nBytes);
-    //printf("%d", receive.action);
-    switch (receive.action)
+    do
     {
-        case KICK: /* kick */
-            printf("O Arbitro kickou-o\nA terminar... \n");
-            forced_shutdown();
-            break;
-    }
+        nBytes = read(fd_pipe, &receive, sizeof(receive));
 
-  } while (stop == 0);
+        if (nBytes == 0)
+            stop = 1;
+        printf("Li %d bytes\n", nBytes);
+        printf("%d", receive.action);
+        switch (receive.action)
+        {
+            case KICK: /* kick */
+                printf("O Arbitro kickou-o\nA terminar... \n");
+                forced_shutdown();
+                break;
 
-  close(fd_pipe);
-  unlink(pipe);
-  pthread_exit(NULL);
+        }
+
+    } while (stop == 0);
+
+    close(fd_pipe);
+    unlink(pipe);
+    pthread_exit(NULL);
 }
 
 
@@ -119,7 +118,6 @@ void *receiver(void *arg)
 int main (int argc, char *argv[]) {
 
     pthread_t thread;
-    Champ champ;
 
     char car, comm[50];
     
@@ -131,13 +129,13 @@ int main (int argc, char *argv[]) {
     setbuf(stdout, NULL);
     
     if (argc != 2 ) {
-        //perro("Missing arguments!\n");
+        fprintf(stderr, "Missing arguments!\n");
         exit(EXIT_ERROR_ARGUMENTS);
     }
 
     // TODO: Verify if server is already Running
     if (!ServerExecution()){
-        //perro("Arbitro is not in execution!\n");
+        fprintf(stderr, "Arbitro is not in execution!\n");
         exit(EXIT_ERROR_PIPE);
     }
 
@@ -154,7 +152,7 @@ int main (int argc, char *argv[]) {
    
     // ########### LOGIN ###############
     strcpy(champ.jogador.username, argv[1]);
-    login (&fd_arbitro, &champ);
+    login (&fd_arbitro);
 
     fd_user = open(pipe, O_RDWR);
 
@@ -167,46 +165,55 @@ int main (int argc, char *argv[]) {
 
     read(fd_user, &champ, sizeof(champ));
     
+    //////////// DEBUG
+    printf("%d\n", champ.action);
+
     if (champ.action == LOGGED)
         logged = 1;
-
+    else if (champ.action == FAIL_LOGIN)
+        logged = 0;
+    else if (champ.action == CHAMPIONSHIP_ALREADY_STARTED) 
+    {
+        fprintf(stderr, "O campeonato já começou.. Não é possivel fazer login\n");
+        forced_shutdown();
+    }
+    
+    
     // ########### END LOGIN ###############
+
+
 
     if (logged) {
 
-         // Create Thread
-        int create_thread = pthread_create(&thread, NULL, receiver, NULL);
-
-        if (create_thread != 0)
+        // Create Thread
+        if (pthread_create(&thread, NULL, receiver, NULL) != 0)
         {
             printf("Erro a criar a thread!!!\nA terminar..\n");
             unlink(pipe);
             exit(EXIT_ERROR_CREATE_THREAD);
         }
-
-
         //ler comandos
         while(1) {
-
             printf("> ");
             scanf(" %50[^\n]s", comm);
             userCommands(comm);
         } 
-    
+    } 
+    else {
+        fprintf(stderr, "Já existe Jogador com esse nome!!\n");
+        forced_shutdown();
     }
-
-        printf("O meu nome e: %s \n", champ.jogador.username);
-        // fflush(stdout);
-        write(fd_user, &champ, sizeof(champ));
-
-        // #### Closing THREAD
-        pthread_join(thread, NULL);
-
     
-        // ### Close pipes #####
-        close(fd_arbitro);
-        unlink(pipe);
 
+    printf("O meu nome e: %s \n", champ.jogador.username);
+    // fflush(stdout);
+    write(fd_user, &champ, sizeof(champ));
 
+    // #### WAIT FINISH THREAD
+    pthread_join(thread, NULL);
+
+    // ### Close pipes #####
+    close(fd_arbitro);
+    unlink(pipe);
     exit(OK);
 }

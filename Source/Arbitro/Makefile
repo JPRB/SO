@@ -4,6 +4,7 @@
 CC = gcc
 SOURCES = ../utils.c jogadores.c main.c  
 CFLAGS = -std=c99
+LDFLAGS= -pthread
 #  Macro - For each (Transform each source.c in source.o)
 OBJ = $(SOURCES:.c=.o)
 EXEC=../../Build/Arbitro
@@ -12,7 +13,7 @@ EXEC=../../Build/Arbitro
 Arbitro: $(SOURCES) $(EXEC)
 
 $(EXEC): $(OBJ)
-	$(CC) $(OBJ) -o $@
+	$(CC) $(OBJ) $(LDFLAGS) -o $@
 
 %.o : %.c
 	$(CC) -c $(CFLAGS) $< -o $@
