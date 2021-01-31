@@ -6,7 +6,7 @@ int logged = 0;
 // Condição de paragem de thread
 int stop = 0;
 
-ClientStruct champ;
+ClientStruct myStruct;
 
 
 
@@ -33,16 +33,16 @@ void forced_shutdown() {
 void shutdown() {
     char pipe[11];
     int fd;
-    ClientStruct shut;
+    ClientStruct myStruct;
 
-    shut.jogador.pid = getpid();
-    shut.action = LOGOUT;
+    myStruct.pid = getpid();
+    myStruct.action = LOGOUT;
 
     sprintf(pipe, "pipe-%d", getpid());
 
     fd = open(ARBITRO_PIPE, O_WRONLY, 0600);
     
-    write(fd, &shut, sizeof(shut));
+    write(fd, &myStruct, sizeof(myStruct));
     unlink(pipe);
     exit(SHUTDOWN);
 }
@@ -74,8 +74,8 @@ void login (int *fd_arbitro) {
         exit(EXIT_ERROR_PIPE);
     }
 
-    champ.action = LOGIN;
-    write(*fd_arbitro, &champ, sizeof(champ));
+    myStruct.action = LOGIN;
+    write(*fd_arbitro, &myStruct, sizeof(myStruct));
 }
 
 // THREAD
@@ -140,8 +140,8 @@ int main (int argc, char *argv[]) {
     }
 
     //Create client pipe 
-    champ.jogador.pid = getpid();
-    sprintf(pipe, "pipe-%d", champ.jogador.pid);
+    myStruct.pid = getpid();
+    sprintf(pipe, "pipe-%d", myStruct.pid);
 
     if (mkfifo(pipe, S_IRWXU) < 0)
     {
@@ -151,7 +151,7 @@ int main (int argc, char *argv[]) {
 
    
     // ########### LOGIN ###############
-    strcpy(champ.jogador.username, argv[1]);
+    strcpy(myStruct.str, argv[1]);
     login (&fd_arbitro);
 
     fd_user = open(pipe, O_RDWR);
@@ -163,16 +163,16 @@ int main (int argc, char *argv[]) {
         exit(EXIT_ERROR_PIPE);
     }
 
-    read(fd_user, &champ, sizeof(champ));
+    read(fd_user, &myStruct, sizeof(myStruct));
     
     //////////// DEBUG
-    printf("%d\n", champ.action);
+    printf("%d\n", myStruct.action);
 
-    if (champ.action == LOGGED)
+    if (myStruct.action == LOGGED)
         logged = 1;
-    else if (champ.action == FAIL_LOGIN)
+    else if (myStruct.action == FAIL_LOGIN)
         logged = 0;
-    else if (champ.action == CHAMPIONSHIP_ALREADY_STARTED) 
+    else if (myStruct.action == CHAMPIONSHIP_ALREADY_STARTED) 
     {
         fprintf(stderr, "O campeonato já começou.. Não é possivel fazer login\n");
         forced_shutdown();
@@ -205,9 +205,8 @@ int main (int argc, char *argv[]) {
     }
     
 
-    printf("O meu nome e: %s \n", champ.jogador.username);
     // fflush(stdout);
-    write(fd_user, &champ, sizeof(champ));
+    write(fd_user, &myStruct, sizeof(myStruct));
 
     // #### WAIT FINISH THREAD
     pthread_join(thread, NULL);

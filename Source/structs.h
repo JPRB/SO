@@ -55,6 +55,16 @@
 
 typedef struct
 {
+    char nome[MAXCHARS];
+    pid_t pid;
+    int pontuacao;
+    int *stdin;
+    int *stdout;
+} Jogo;
+
+
+typedef struct
+{
     int pid;
     char username[MAXCHARS];
     Jogo jogo;
@@ -68,16 +78,6 @@ typedef struct
     int duracao_campeonato;
     int tempo_espera; // Tempo máximo de espera apoś 2 jogadores (segundos) 
 } Arbitro;
-
-
-typedef struct
-{
-    char nome[MAXCHARS];
-    pid_t pid;
-    int pontuacao;
-    int *stdin;
-    int *stdout;
-} Jogo;
 
 
 typedef struct 

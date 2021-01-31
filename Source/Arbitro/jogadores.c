@@ -11,7 +11,7 @@ void adicionarJogador(int pid, const char *username) {
 
 void listar_jogadores() {
 	for (int i = 0; i < nr_users; i++) {
-		printf("Nome: %s Jogo: %s\n", lista_jogadores[i].username, lista_jogadores[i].nome_jogo);
+		printf("Nome: %s Jogo: %s\n", lista_jogadores[i].username, lista_jogadores[i].jogo.nome);
 	
 	}
 }

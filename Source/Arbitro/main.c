@@ -1,28 +1,31 @@
 
 #include "main.h"
+#include <dirent.h>
 
 int nr_users;
+int nr_jogos=0;
 int can_login = 1;
 int stopThread = 0;
 Jogador lista_jogadores[30];
+Arbitro arbitro;
+char lista_jogos[30][MAXCHARS];
 
+int getEnvironmentVars () {
 
-int getEnvironmentVars (Arbitro *arbitro) {
-
-     char *smaxplayers;
-    if ((arbitro->gamedir = getenv("GAMEDIR")) == NULL) {
-        arbitro->gamedir = GAMEDIR;
+    char *smaxplayers;
+    if ((arbitro.gamedir = getenv("GAMEDIR")) == NULL) {
+        arbitro.gamedir = GAMEDIR;
     }
 
 
     smaxplayers = getenv("MAXPLAYERS");
     
     if (smaxplayers != NULL)  {
-        arbitro->maxplayers = atoi(smaxplayers);
+        arbitro.maxplayers = atoi(smaxplayers);
     }
     else
     {
-        arbitro->maxplayers = MAXPLAYERS;
+        arbitro.maxplayers = MAXPLAYERS;
     }
 }
 
@@ -112,8 +115,52 @@ void user_login(int pid, const char * username) {
     close(fd_user);
 }
 
-void arbitroCommands (const char* cmd) {
-    char *aux;
+
+void readGameDir(){
+    char * dirname;
+    DIR *dir;
+
+    struct dirent * entrada;
+    dirname = arbitro.gamedir;
+
+    if ((dir = opendir(dirname)) == NULL)
+        perror("\nErro em opendir");
+    else {
+        while ((entrada = readdir(dir)) != NULL)
+        {
+            if ((entrada->d_name[0] == 'G' || entrada->d_name[0] == 'g') && entrada->d_name[1] == '_')
+            {
+                
+                strcpy(lista_jogos[nr_jogos++], entrada->d_name);
+                // # DEBUG
+                printf("Total: %d -- Nome: %s -- Nome saved : %s\n", 
+                nr_jogos, entrada->d_name, lista_jogos[nr_jogos-1]);
+            }   
+        }
+        closedir(dir);
+    }
+
+    // # DEBUG
+    printf("%d\n\n", nr_jogos);
+    for (int i=0; i < nr_jogos; i++) { 
+        printf("%s\n", lista_jogos[i]);
+    }
+
+}
+
+
+void init_campeonato() {
+    // Atribuir a cada jogador, um jogo
+
+    
+}
+
+void arbitroCommands (const char * cmd) {
+    char sub_cmd[MAXCHARS] = "";
+    char *p = (char *)  cmd + 1;
+
+	strcpy(sub_cmd, p);
+    //printf("-- sub comand -- %s \n", sub_cmd);
 
     if (strcmp(cmd, "players") == 0){
         // TODO: listar jogadores (nome e jogo atribuido)
@@ -124,16 +171,13 @@ void arbitroCommands (const char* cmd) {
     }
     else if (cmd[0] == 'k') {
         // kick user (e.g: krui - remove jogador 'rui') 
-        aux = cmd[1];
-        kick_user(aux);
+        kick_user(sub_cmd);
         
     }
     else if (cmd[0] == 's') {
-        aux = cmd[1];
         // TODO: mensagens jogador-jogo ficam suspensas (e.g: srui ) 
     }
     else if (cmd[0] == 'r') {
-        aux = cmd[1];
         // TODO: retomar comunicação jogador-jogo (e.g: rrui ) 
     }
     else if(strcmp(cmd, "end") == 0) {
@@ -153,11 +197,6 @@ void arbitroCommands (const char* cmd) {
     printf("Comando: %s \n", cmd);
 }
 
-void init_campeonato() {
-    // Atribuir a cada jogador, um jogo
-
-    
-}
 
 
 void *thread_func(void *arg) {
@@ -213,7 +252,6 @@ void *campeonato(void *arg) {
 
 int main (int argc, char *argv[])
 {   
-    Arbitro arbitro;
     Jogo jogo;
     ClientStruct champ;
 
@@ -241,10 +279,15 @@ int main (int argc, char *argv[])
     // ################# END VALIDATE ARGS ####################
 
     // ################# ENVIRONMENT VARS ####################
-    getEnvironmentVars(&arbitro);
+    getEnvironmentVars();
     // ################# END ENVIRONMENT VARS ####################
     
-     // ######### Arbitro PIPE ################
+
+    // TODO : Ler o diretorio de jogos, criar array estático de jogos [nome]
+    readGameDir();
+    getchar();
+getchar();
+    // ######### Arbitro PIPE ################
     if (access(ARBITRO_PIPE, F_OK) == 0)
     {
         perro("Arbitro already in execution!\n");
@@ -264,8 +307,7 @@ int main (int argc, char *argv[])
      arbitro.duracao_campeonato, arbitro.tempo_espera);
     fflush(stdout);
     
-    // TODO : Ler o diretorio de jogos, criar array estático de jogos [nome]
-
+   
     // CREATE THREAD To RECEIVE FROM USERS
     if (pthread_create(&thread, NULL, thread_func, NULL) != 0)
     {
