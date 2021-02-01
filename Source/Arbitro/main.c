@@ -68,15 +68,6 @@ void kick_all_users() {
     }
 }
 
-/*char tokenK(){
-    char str[]= "krui";
-
-    char* token = strtok(str, "k");
-    printf("%s\n", token); //token é o nome do jogador a ser k
-    return token;
-
-}
-*/
 
 void user_login(int pid, const char * username) {
     int fd_user;
@@ -151,7 +142,13 @@ void readGameDir(){
 
 void init_campeonato() {
     // Atribuir a cada jogador, um jogo
+        // 1. numero aleatorio até nr_jogos
 
+        // 2. Executar o processo do jogo do nr aletorio
+            
+            // 2.1 Fork, fechar e duplicar descritores stdin e stdout.
+            
+        // 3.
     
 }
 
