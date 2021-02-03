@@ -13,9 +13,11 @@ char lista_jogos[30][MAXCHARS];
 int getEnvironmentVars () {
 
     char *smaxplayers;
-    if ((arbitro.gamedir = getenv("GAMEDIR")) == NULL) {
+    if (getenv("GAMEDIR") == NULL) {
         arbitro.gamedir = GAMEDIR;
     }
+    else
+        arbitro.gamedir = getenv("GAMEDIR");
 
 
     smaxplayers = getenv("MAXPLAYERS");
@@ -114,8 +116,10 @@ void readGameDir(){
     struct dirent * entrada;
     dirname = arbitro.gamedir;
 
-    if ((dir = opendir(dirname)) == NULL)
+    if ((dir = opendir(dirname)) == NULL) {
         perror("\nErro em opendir");
+        exit(EXIT_ERROR_ARGUMENTS);
+    }
     else {
         while ((entrada = readdir(dir)) != NULL)
         {
@@ -159,6 +163,8 @@ Jogo create_game_process (const char* game_name) {
     int pipeF[2];
     // pipe child to father (Game -> Arbitro)
     int pipeC[2];
+    char *path;
+
 
     strcpy(jogo.nome, game_name);
 
@@ -176,7 +182,6 @@ Jogo create_game_process (const char* game_name) {
         exit(EXIT_ERROR_PIPE);
     }
 
-
     switch (jogo.pid = fork())
     {
         // Erro
@@ -187,6 +192,7 @@ Jogo create_game_process (const char* game_name) {
 
         // CHILD
         case 0:
+
             // Close unused write on pipe Father, not need
             close(pipeF[1]);
             // Close unused read on pipe Child, not need
@@ -203,11 +209,9 @@ Jogo create_game_process (const char* game_name) {
             close(pipeC[1]);
             close(pipeF[0]);
 
-            char *path = arbitro.gamedir;
+            strcpy(path, arbitro.gamedir);
             strcat(path, game_name);
 
-            printf("\n\n%s\n\n", path);
-            
             if (execl(path, jogo.nome, NULL) == -1)
             {
                 perro("Error execution game");
