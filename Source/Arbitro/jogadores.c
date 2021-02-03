@@ -80,6 +80,20 @@ int get_pid_By_username(const char *username) {
 
 }
 
+/* @return
+	jogador - FOUND
+	Null - Not FOUND
+*/
+Jogador *get_jogador_by_pid(int pid) {
+	for (int i = 0; i < nr_users; i++)
+	{
+		if (lista_jogadores[i].pid == pid){
+			return &lista_jogadores[i];
+		}
+	}
+	return NULL;
+}
+
 
 /*
 pJogador remove_Jogador(pJogador lista, const char* nome) {

@@ -63,6 +63,15 @@ void userCommands (const char* comm) {
     printf("Comando: %s \n", comm);
 }
 
+void game(ClientStruct myStruct)
+{
+    char pipe[11];
+    int fd;  
+
+    myStruct.pid = getpid();
+
+    printf("game? %s\n", myStruct.str);
+}
 
 void login (int *fd_arbitro) {
 
@@ -102,6 +111,14 @@ void *receiver(void *arg)
             case KICK: /* kick */
                 printf("O Arbitro kickou-o\nA terminar... \n");
                 forced_shutdown();
+                break;
+
+            case GAME_NAME:
+                printf("Nome do jogo: %s\n", receive.str);
+                break;
+                
+            default:
+                game(receive);
                 break;
 
         }

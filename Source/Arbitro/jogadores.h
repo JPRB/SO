@@ -14,4 +14,6 @@ int delete_user_by_PID(int pid);
 
 int delete_user_by_name(const char * username);
 
+Jogador *get_jogador_by_pid(int pid);
+
 #endif

@@ -9,9 +9,9 @@
 // ENVIRONMENT VARS
 #define GAMEDIR "../GameDir/"
 
-#define MAXPLAYERS 10 // < 30
+#define MAXPLAYERS 30 // <= 30
 
-extern int nr_users;
+extern unsigned int nr_users;
 extern Jogador lista_jogadores[30];
 extern Arbitro arbitro;
 extern Jogo jogo;

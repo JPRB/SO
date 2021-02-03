@@ -2,11 +2,11 @@
 #include "main.h"
 #include <dirent.h>
 
-int nr_users;
-int nr_jogos=0;
+unsigned int nr_users;
+unsigned int nr_jogos=0;
 int can_login = 1;
 int stopThread = 0;
-Jogador lista_jogadores[30];
+Jogador lista_jogadores[MAXPLAYERS];
 Arbitro arbitro;
 char lista_jogos[30][MAXCHARS];
 
@@ -83,7 +83,7 @@ void user_login(int pid, const char * username) {
         //exit(EXIT_ERROR_PIPE);
     }
 
-    if (can_login)
+    if (can_login && (nr_users < arbitro.maxplayers))
     {
         if (!existe_jogador(username))
         {
@@ -140,16 +140,165 @@ void readGameDir(){
 }
 
 
-void init_campeonato() {
+void listar_jogos() {
+    for (unsigned int i = 0; i < nr_jogos; i++) {
+		printf("\n Jogo [%d] : %s\n", i+1, lista_jogos[i]);
+	}
+}
+
+// Return : num random from 0 to num
+unsigned int random_num(unsigned int num) {
+    srand(time(NULL));
+    return rand() % num;
+}
+
+Jogo create_game_process (const char* game_name) {
+    Jogo jogo;
+
+    // pipe father to child (Arbitro -> Game)
+    int pipeF[2];
+    // pipe child to father (Game -> Arbitro)
+    int pipeC[2];
+
+    strcpy(jogo.nome, game_name);
+
+     // Unnamed pipe father to child
+    if (pipe(pipeF) == -1)
+    {
+        fprintf(stderr, "Cannot execute Game! [1]\n");
+        exit(EXIT_ERROR_PIPE);
+    }
+
+    // Unnamed pipe child to Father
+    if (pipe(pipeC) == -1)
+    {
+        fprintf(stderr, "Cannot execute Verificador! [2]\n");
+        exit(EXIT_ERROR_PIPE);
+    }
+
+
+    switch (jogo.pid = fork())
+    {
+        // Erro
+        case -1:
+            perro("Error on fork");
+            exit(EXIT_ERROR_CREATE_PROCESS);
+            break;
+
+        // CHILD
+        case 0:
+            // Close unused write on pipe Father, not need
+            close(pipeF[1]);
+            // Close unused read on pipe Child, not need
+            close(pipeC[0]);
+            
+            close(1); // stdout
+            // Duplicate. (stdout (1) -> pipeC[1] - write)
+            dup(pipeC[1]);
+
+            close(0); // stdin
+            // Duplicate. (stdin (0) -> pipeF[0] - read)
+            dup(pipeF[0]);
+
+            close(pipeC[1]);
+            close(pipeF[0]);
+
+            char *path = arbitro.gamedir;
+            strcat(path, game_name);
+
+            printf("\n\n%s\n\n", path);
+            
+            if (execl(path, jogo.nome, NULL) == -1)
+            {
+                perro("Error execution game");
+                exit(EXIT_ERROR_EXEC_GAME);
+            }
+
+            exit(EXIT_SUCCESS);
+            break;
+
+        default:
+            close (pipeF[0]); // Close unused father read, not need
+            close (pipeC[1]); // Close unused child write, not need
+
+            jogo.stdin = &pipeF[1];
+            jogo.stdout = &pipeC[0];
+
+            break;
+    }
+
+
+/*
+    printf("Introduza o PID do processo a eliminar: ");
+    scanf("%d", &jogo.pid);
+
+    if (kill(jogo.pid, SIGUSR1) == -1) {
+        perro("Erro a enviar signal\n");
+    }
+
+    waitpid(jogo.pid, &jogo.pontuacao, 0);
+
+    // wait(&jogo.pontuacao);
+    if (WEXITSTATUS(jogo.pontuacao)) {
+        printf("Jogo Pontuação: %d", WEXITSTATUS(jogo.pontuacao));
+    }*/
+
+    return jogo;
+}
+
+
+void send_gameName_to_jogador(int pid, const char* game_name) {
+    ClientStruct jogador;
+    char pipe[11];
+
+    jogador.pid = pid;
+    jogador.action = GAME_NAME;
+    strcpy(jogador.str, game_name);
+
+    sprintf(pipe, "pipe-%d", jogador.pid);
+    int fd_send = open(pipe, O_WRONLY, 0600);
+        
+    write(fd_send, &jogador, sizeof(jogador));
+
+    close(fd_send);
+}
+
+void init_game(Jogador *jogador){
     // Atribuir a cada jogador, um jogo
         // 1. numero aleatorio até nr_jogos
+        unsigned int nr_random = random_num(nr_jogos);
+        printf("calhou: %d\n\n", nr_random);
 
         // 2. Executar o processo do jogo do nr aletorio
-            
-            // 2.1 Fork, fechar e duplicar descritores stdin e stdout.
-            
-        // 3.
+        strcpy(jogador->jogo.nome, lista_jogos[nr_random]);
+
+        // 3. Indicar o jogo atribuido ao Jogador
+        send_gameName_to_jogador(jogador->pid, jogador->jogo.nome);
+
+        // 4. Executar o processo do jogo
+            // 3.1 Fork, fechar e duplicar descritores, guardar stdin e stdout.
+            jogador->jogo = create_game_process(jogador->jogo.nome);
+            printf("[JOGO] nome: %s PID: %d pontuacao: %d\n", jogador->jogo.nome, jogador->jogo.pid, jogador->jogo.pontuacao);
+
+        
+}
+
+
+void init_campeonato() {
+    for(unsigned int i=0; i < nr_users; i++){
+        init_game(&lista_jogadores[i]);
+        printf("Game name: %s\n\n", lista_jogadores[i].jogo.nome);
+    }
+}
+
+void game_interact (ClientStruct jogador) {
+    Jogador *j = get_jogador_by_pid(jogador.pid);
+
+    printf("[JOGADOR] nome: %s\n[JOGO] nome: %s PID: %d \n O QUE QUER:: %s ||| Tamanho : %d", j->username, j->jogo.nome, j->jogo.pid, jogador.str, sizeof(jogador.str));
+    getchar();
+    getchar();
     
+    //write(*j->jogo.stdin, jogador.str, sizeof(jogador.str));
 }
 
 void arbitroCommands (const char * cmd) {
@@ -160,11 +309,12 @@ void arbitroCommands (const char * cmd) {
     //printf("-- sub comand -- %s \n", sub_cmd);
 
     if (strcmp(cmd, "players") == 0){
-        // TODO: listar jogadores (nome e jogo atribuido)
+        // listar jogadores (nome e jogo atribuido)
         listar_jogadores();
     }
     else if (strcmp(cmd, "games") == 0) {
-        // TODO: listar jogos disponiveis
+        // listar jogos disponiveis
+        listar_jogos();
     }
     else if (cmd[0] == 'k') {
         // kick user (e.g: krui - remove jogador 'rui') 
@@ -225,6 +375,9 @@ void *thread_func(void *arg) {
             case LOGOUT:
                 delete_user_by_PID(receive.pid);
                 break;
+            default:
+                game_interact(receive);
+                break;
         }
     } while (!stopThread);
   
@@ -278,12 +431,8 @@ int main (int argc, char *argv[])
     // ################# ENVIRONMENT VARS ####################
     getEnvironmentVars();
     // ################# END ENVIRONMENT VARS ####################
-    
 
-    // TODO : Ler o diretorio de jogos, criar array estático de jogos [nome]
-    readGameDir();
-    getchar();
-getchar();
+
     // ######### Arbitro PIPE ################
     if (access(ARBITRO_PIPE, F_OK) == 0)
     {
@@ -298,6 +447,20 @@ getchar();
         perro("Error: Creating Pipe! \n");
         exit(EXIT_ERROR_PIPE);
     }
+
+
+    // Ler o diretorio de jogos, criar array estático de jogos [nome]
+    readGameDir();
+    
+    // Verificar nr jogos > 0 in GAMEDIR
+    if (nr_jogos < 1)
+    {
+        perro("Não existem jogos na pasta!\n A terminar..");
+        exit(EXIT_ERROR_NO_GAMES);
+    }
+    getchar();
+    getchar();
+
 
     printf("Nº args : %d GameDir: %s max players %d\n"
      "Duracao campeonato: %d Tempo espera: %d\n", argc, arbitro.gamedir, arbitro.maxplayers,

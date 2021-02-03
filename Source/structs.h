@@ -20,6 +20,8 @@
 #define EXIT_ERROR_PIPE 3
 #define EXIT_ERROR_CREATE_PROCESS 4
 #define EXIT_ERROR_CREATE_THREAD 5
+#define EXIT_ERROR_NO_GAMES 6
+#define EXIT_ERROR_EXEC_GAME 7
 #define SHUTDOWN 10
 
 
@@ -33,7 +35,8 @@
 #define FAIL_LOGIN 103
 #define CHAMPIONSHIP_ALREADY_STARTED 104
 #define KICK 105
-/*#define LOGIN
+#define GAME_NAME 406
+/*
 #define LOGIN
 #define LOGIN
 #define LOGIN
