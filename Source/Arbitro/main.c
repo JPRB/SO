@@ -10,6 +10,25 @@ Jogador lista_jogadores[MAXPLAYERS];
 Arbitro arbitro;
 char lista_jogos[30][MAXCHARS];
 
+
+void write_Tojogador(ClientStruct client){
+    char pipe[11];
+
+    sprintf(pipe, "pipe-%d", client.pid);
+    int fd_user = open(pipe, O_WRONLY);
+
+    if (fd_user == -1)
+    {
+        perro("Erro a abrir o Cliente Pipe!!\n");
+        exit(EXIT_ERROR_PIPE);
+    }
+    strcat(client.str, "\n");
+    // dar feedBack ao user
+    write(fd_user, &client, sizeof(client));
+
+    close(fd_user); 
+}
+
 int getEnvironmentVars () {
 
     char *smaxplayers;
@@ -72,18 +91,8 @@ void kick_all_users() {
 
 
 void user_login(int pid, const char * username) {
-    int fd_user;
-    char pipe[11];
     ClientStruct send;
-    
-    sprintf(pipe, "pipe-%d", pid);
-
-    fd_user = open(pipe, O_RDWR);
-    if (fd_user == -1)
-    {
-        perro("Erro a abrir o Cliente Pipe!!\n");
-        //exit(EXIT_ERROR_PIPE);
-    }
+    send.pid = pid;
 
     if (can_login && (nr_users < arbitro.maxplayers))
     {
@@ -103,9 +112,7 @@ void user_login(int pid, const char * username) {
         send.action = CHAMPIONSHIP_ALREADY_STARTED;
     }
 
-    write(fd_user, &send, sizeof(send));
-        
-    close(fd_user);
+    write_Tojogador(send);
 }
 
 
@@ -253,38 +260,38 @@ Jogo create_game_process (const char* game_name) {
 
 void send_gameName_to_jogador(int pid, const char* game_name) {
     ClientStruct jogador;
-    char pipe[11];
 
     jogador.pid = pid;
     jogador.action = GAME_NAME;
     strcpy(jogador.str, game_name);
 
-    sprintf(pipe, "pipe-%d", jogador.pid);
-    int fd_send = open(pipe, O_WRONLY, 0600);
-        
-    write(fd_send, &jogador, sizeof(jogador));
-
-    close(fd_send);
+    write_Tojogador(jogador);
 }
 
 void init_game(Jogador *jogador){
+
+    ClientStruct cliente;
+    cliente.pid = jogador->pid;
     // Atribuir a cada jogador, um jogo
         // 1. numero aleatorio até nr_jogos
-        unsigned int nr_random = random_num(nr_jogos);
-        printf("calhou: %d\n\n", nr_random);
+    unsigned int nr_random = random_num(nr_jogos);
+    printf("calhou: %d\n\n", nr_random);
 
         // 2. Executar o processo do jogo do nr aletorio
-        strcpy(jogador->jogo.nome, lista_jogos[nr_random]);
+    strcpy(jogador->jogo.nome, lista_jogos[nr_random]);
 
         // 3. Indicar o jogo atribuido ao Jogador
-        send_gameName_to_jogador(jogador->pid, jogador->jogo.nome);
+    send_gameName_to_jogador(jogador->pid, jogador->jogo.nome);
 
         // 4. Executar o processo do jogo
             // 3.1 Fork, fechar e duplicar descritores, guardar stdin e stdout.
-            jogador->jogo = create_game_process(jogador->jogo.nome);
-            printf("[JOGO] nome: %s PID: %d pontuacao: %d\n", jogador->jogo.nome, jogador->jogo.pid, jogador->jogo.pontuacao);
+        jogador->jogo = create_game_process(jogador->jogo.nome);
+        printf("[JOGO] nome: %s PID: %d pontuacao: %d\n", jogador->jogo.nome, jogador->jogo.pid, jogador->jogo.pontuacao);
 
-        
+    read(*jogador->jogo.stdout, &cliente.str, sizeof(cliente.str));
+
+    printf("Eu li: %s \n Bytes: %d", cliente.str, sizeof(cliente.str));
+    write_Tojogador(cliente);
 }
 
 
@@ -299,10 +306,16 @@ void game_interact (ClientStruct jogador) {
     Jogador *j = get_jogador_by_pid(jogador.pid);
 
     printf("[JOGADOR] nome: %s\n[JOGO] nome: %s PID: %d \n O QUE QUER:: %s ||| Tamanho : %d", j->username, j->jogo.nome, j->jogo.pid, jogador.str, sizeof(jogador.str));
-    getchar();
-    getchar();
+
+    strcat(jogador.str, "\n");
+    write(*j->jogo.stdin, jogador.str, sizeof(jogador.str));
+    printf("Eu escrevi: %s\n", jogador.str);
     
-    //write(*j->jogo.stdin, jogador.str, sizeof(jogador.str));
+    read(*j->jogo.stdout, jogador.str, sizeof(jogador.str));
+    
+    printf("Eu li: %s\n", jogador.str);
+
+    write_Tojogador(jogador);
 }
 
 void arbitroCommands (const char * cmd) {
@@ -310,7 +323,7 @@ void arbitroCommands (const char * cmd) {
     char *p = (char *)  cmd + 1;
 
 	strcpy(sub_cmd, p);
-    //printf("-- sub comand -- %s \n", sub_cmd);
+    //printf("-- sub comand -- %s \n", sub_cmd);    
 
     if (strcmp(cmd, "players") == 0){
         // listar jogadores (nome e jogo atribuido)
@@ -341,7 +354,7 @@ void arbitroCommands (const char * cmd) {
         init_campeonato();
     }
     
-    
+     // #DEBUG
     printf("- users nr. %d - \n", nr_users);
 
     // #DEBUG

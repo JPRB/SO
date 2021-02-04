@@ -14,22 +14,24 @@ void trataSinalExit (int sigNum) {
 
 int main()
 {
-  int num = 0;
+  int n = 0;
+  char num[255];
 
   signal(SIGUSR1, trataSinalExit);
+  srand(time(NULL));
   setbuf(stdout, NULL);
 
-  printf("BEM VINDO AO JOGO!\n");
-  printf("O objetivo deste jogo e' apenas testar as funcionalidades do sistema CHAMPION.\nTente acertar no numero que o computador vai gerar entre 0 e 5\nBOA SORTE!\n");
+  printf("BEM VINDO AO JOGO!\nO objetivo deste jogo e' apenas testar as funcionalidades do sistema CHAMPION.\nTente acertar no numero que o computador vai gerar entre 0 e 5\nBOA SORTE!\n");
 
   for (int i=0; i < 5; i++)
   {
-    int randomNUM = rand()%6;
-    srand(time(NULL));
-    printf("\n\nAdivinhe o numero gerado: ");
-    scanf("%d",&num );
+    int randomNUM = rand() % 6;
+    printf("\nAdivinhe o numero gerado: \n");
+    scanf("%1[0123456789]", num);
+     
+    n = atoi(num);
 
-    if (num == randomNUM) {
+    if (n == randomNUM) {
       printf("Bingo!!!\n");
       pontos ++;
     }
@@ -40,6 +42,6 @@ int main()
     }
   }
   printf("\n\nAcabou com %d pontos\n",pontos);
-
+  fflush(stdout);
   exit(pontos);
 }

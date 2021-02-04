@@ -7,7 +7,7 @@
 
 
 // ENVIRONMENT VARS
-#define GAMEDIR "../Build/" // "../GameDir/"
+#define GAMEDIR "../GameDir/" //"../Build/"
 
 #define MAXPLAYERS 30 // <= 30
 

@@ -47,8 +47,20 @@ void shutdown() {
     exit(SHUTDOWN);
 }
 
+void gameWrite(const char *gameInstruction) {
+    ClientStruct myStruct;
+    int fd;  
 
+    myStruct.pid = getpid();
 
+    fd = open(ARBITRO_PIPE, O_WRONLY, 0600);
+    
+    strcpy(myStruct.str, gameInstruction);
+
+    write(fd, &myStruct, sizeof(myStruct));
+
+    close(fd);
+}
 
 void userCommands (const char* comm) {
 
@@ -59,18 +71,26 @@ void userCommands (const char* comm) {
     else if (strcmp(comm, "#quit") == 0) {
         shutdown();
     }
+    else
+    {
+        gameWrite(comm);
+    }
+    
 
     printf("Comando: %s \n", comm);
 }
 
-void game(ClientStruct myStruct)
+
+
+
+void gameRead(ClientStruct myStruct)
 {
     char pipe[11];
     int fd;  
 
     myStruct.pid = getpid();
 
-    printf("game? %s\n", myStruct.str);
+    printf("\n\n%s\n", myStruct.str);
 }
 
 void login (int *fd_arbitro) {
@@ -118,7 +138,7 @@ void *receiver(void *arg)
                 break;
                 
             default:
-                game(receive);
+                gameRead(receive);
                 break;
 
         }
