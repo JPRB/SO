@@ -12,8 +12,9 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <pthread.h>
+#include <errno.h>
 
-#define DEBUG
+//#define DEBUG
 
 #define OK 0
 #define EXIT_ERROR_ARGUMENTS 1
@@ -60,8 +61,9 @@ typedef struct
     char nome[MAXCHARS];
     pid_t pid;
     int pontuacao;
-    int *stdin;
-    int *stdout;
+    int stdin;
+    int stdout;
+    pthread_t gameThread;
 } Jogo;
 
 
@@ -75,10 +77,12 @@ typedef struct
 
 typedef struct
 {
-    char *gamedir;
+    char gamedir[50];
     int maxplayers;
     int duracao_campeonato;
-    int tempo_espera; // Tempo máximo de espera apoś 2 jogadores (segundos) 
+    int tempo_espera; // Tempo máximo de espera apoś 2 jogadores (segundos)
+    int nr_jogos;
+    int nr_users;
 } Arbitro;
 
 
@@ -86,8 +90,8 @@ typedef struct
 {
     int action;
     int pid;
-    char cmd_1[255];
-    char str[255];
+    char cmd_1[100];
+    char str[100];
     Jogador jogador;
 } ClientStruct;
 

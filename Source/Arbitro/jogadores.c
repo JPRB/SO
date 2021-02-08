@@ -3,14 +3,14 @@
 
 void adicionarJogador(int pid, const char *username) {
 	
-	lista_jogadores[nr_users].pid = pid;
-    strcpy(lista_jogadores[nr_users].username, username);
-  	nr_users++;
+	lista_jogadores[arbitro.nr_users].pid = pid;
+    strcpy(lista_jogadores[arbitro.nr_users].username, username);
+  	arbitro.nr_users++;
 }
 
 
 void listar_jogadores() {
-	for (int i = 0; i < nr_users; i++) {
+	for (int i = 0; i < arbitro.nr_users; i++) {
 		printf("Nome: %s Jogo: %s\n", lista_jogadores[i].username, lista_jogadores[i].jogo.nome);
 	}
 }
@@ -18,17 +18,17 @@ void listar_jogadores() {
 /*  1 - Removed 
 	0 - Not found*/
 int delete_user_by_PID(int pid) {
-  Jogador null_users = {{0}};
+  Jogador null_users = {0};
 
-  if (nr_users > 0) {
-    if (nr_users == 1) {
+  if (arbitro.nr_users > 0) {
+    if (arbitro.nr_users == 1) {
     	lista_jogadores[0] = null_users;
-    	nr_users--;
+    	arbitro.nr_users--;
     } else {
     	int i;
-    	for (i = 0; i < nr_users && lista_jogadores[i].pid != pid; i++);
-      	lista_jogadores[i] = lista_jogadores[nr_users - 1];
-      	nr_users--;
+    	for (i = 0; i < arbitro.nr_users && lista_jogadores[i].pid != pid; i++);
+      	lista_jogadores[i] = lista_jogadores[arbitro.nr_users - 1];
+      	arbitro.nr_users--;
     }
   }
 }
@@ -38,7 +38,7 @@ int delete_user_by_PID(int pid) {
 	0 - Not found
 */
 int delete_user_by_name(const char * username ) { 
-	for (int i = 0; i < nr_users; i++)
+	for (int i = 0; i < arbitro.nr_users; i++)
 	{
 		if (strcmp(lista_jogadores[i].username, username) == 0) {
 			delete_user_by_PID(lista_jogadores[i].pid);
@@ -53,7 +53,7 @@ int delete_user_by_name(const char * username ) {
 	0 - Not found
 */
 int existe_jogador(const char* username) {
-	for (int i = 0; i < nr_users; i++)
+	for (int i = 0; i < arbitro.nr_users; i++)
 	{
 		if (strcmp(lista_jogadores[i].username, username) == 0){
 			return 1;
@@ -69,7 +69,7 @@ int existe_jogador(const char* username) {
 */
 int get_pid_By_username(const char *username) {
 	
-	for (int i = 0; i < nr_users; i++)
+	for (int i = 0; i < arbitro.nr_users; i++)
 	{
 		if (strcmp(lista_jogadores[i].username, username) == 0){
 			return lista_jogadores[i].pid;
@@ -84,7 +84,7 @@ int get_pid_By_username(const char *username) {
 	Null - Not FOUND
 */
 Jogador *get_jogador_by_pid(int pid) {
-	for (int i = 0; i < nr_users; i++)
+	for (int i = 0; i < arbitro.nr_users; i++)
 	{
 		if (lista_jogadores[i].pid == pid){
 			return &lista_jogadores[i];

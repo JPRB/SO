@@ -91,21 +91,25 @@ void gameRead(ClientStruct myStruct)
 
     myStruct.pid = getpid();
 
-    printf("\n\n%s\n", myStruct.str);
+    printf("%s", myStruct.str);
+    fflush(stdout);
 }
 
 void login (int *fd_arbitro) {
 
-    *fd_arbitro = open(ARBITRO_PIPE, O_RDWR);
+    *fd_arbitro = open(ARBITRO_PIPE, O_WRONLY);
 
     if (*fd_arbitro == -1)
     {
         //perro("Erro a abrir o Arbitro Pipe!!\n A terminar...\n");
         exit(EXIT_ERROR_PIPE);
     }
-
+    
     myStruct.action = LOGIN;
-    write(*fd_arbitro, &myStruct, sizeof(myStruct));
+    int n = write(*fd_arbitro, &myStruct, sizeof(myStruct));
+    #ifdef DEBUG
+        printf("Escrevi [%d] bytes\n", n);
+    #endif
 }
 
 // THREAD
@@ -117,7 +121,7 @@ void *receiver(void *arg)
     int nBytes;
 
     sprintf(pipe, "pipe-%d", getpid());
-    fd_pipe = open(pipe, O_RDWR);
+    fd_pipe = open(pipe, O_RDONLY);
 
     do
     {
@@ -128,7 +132,7 @@ void *receiver(void *arg)
         
         #ifdef DEBUG
             printf("Li %d bytes\n", nBytes);
-            printf("%d", receive.action);
+            printf("Action: %d\n", receive.action);
         #endif
 
         switch (receive.action)
@@ -196,7 +200,7 @@ int main (int argc, char *argv[]) {
     strcpy(myStruct.str, argv[1]);
     login (&fd_arbitro);
 
-    fd_user = open(pipe, O_RDWR);
+    fd_user = open(pipe, O_RDONLY);
 
     if (fd_user == -1)
     {
