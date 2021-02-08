@@ -13,6 +13,7 @@
 #include <sys/wait.h>
 #include <pthread.h>
 
+#define DEBUG
 
 #define OK 0
 #define EXIT_ERROR_ARGUMENTS 1
@@ -23,8 +24,6 @@
 #define EXIT_ERROR_NO_GAMES 6
 #define EXIT_ERROR_EXEC_GAME 7
 #define SHUTDOWN 10
-
-
 
 
 // ######## LIST OF ACTIONS ########

@@ -2,6 +2,8 @@
 #include "main.h"
 #include <dirent.h>
 
+
+
 unsigned int nr_users;
 unsigned int nr_jogos=0;
 int can_login = 1;
@@ -10,6 +12,40 @@ Jogador lista_jogadores[MAXPLAYERS];
 Arbitro arbitro;
 char lista_jogos[30][MAXCHARS];
 
+
+
+void finish_champion()
+{
+    ClientStruct send;
+    // Campeonato END 
+    // send.action = ;
+    for (int i=0; i < nr_users; i++) {
+        Jogador player;
+        strcpy(player.username ,lista_jogadores[i].username);
+        player.jogo = lista_jogadores[i].jogo;
+
+        // Enviar signal SIGUSR1 to Jogador a dizer que campeonato terminou
+
+        // Enviar SIGUSR1 to kill game
+        kill(player.jogo.pid, SIGUSR1);
+        
+        int game_PID = wait(&player.jogo.pontuacao);
+
+        // #DEBUG
+        #ifdef DEBUG
+            fprintf(stdout, "\n PID JOGO %d EQUALS PID GAME WAIT? %d\n", player.jogo.pid, game_PID);
+        #endif
+
+        if (WEXITSTATUS(player.jogo.pontuacao)) {
+            printf("Jogador %s --> Jogo Pontuacao: %d\n", player.username, WEXITSTATUS(player.jogo.pontuacao));
+        }
+
+        // Enviar a pontuação para o Jogador pelo pipe
+        
+    }
+    // Campeonato Over!!!
+    printf("------ Acabou Campeonato!! ---------\n");
+}
 
 void write_Tojogador(ClientStruct client){
     char pipe[11];
@@ -22,7 +58,6 @@ void write_Tojogador(ClientStruct client){
         perro("Erro a abrir o Cliente Pipe!!\n");
         exit(EXIT_ERROR_PIPE);
     }
-    strcat(client.str, "\n");
     // dar feedBack ao user
     write(fd_user, &client, sizeof(client));
 
@@ -50,8 +85,8 @@ int getEnvironmentVars () {
     }
 }
 
-void kick_user (const char *name) {
-    int fd_user, pid;
+int kick_user (const char *name) {
+    int fd_user, pid, val=1;
     char pipe[11];
     ClientStruct send;
 
@@ -77,16 +112,24 @@ void kick_user (const char *name) {
     else
     {
         printf("Jogador inexistente.\n");
+        val=0;
     }
-    
+    return val;
 }
 
 void kick_all_users() {
 
     for (int i=nr_users; nr_users != 0; i--) {
         char *nome = lista_jogadores[i].username;
-        kick_user(nome);
+        int game_pid = lista_jogadores[i].jogo.pid;
+     
+        if (kick_user(nome) == 1){
+            // Enviar SIGUSR1 to kill game
+            kill(game_pid, SIGUSR1);
+        }
     }
+
+    // shutdown();
 }
 
 
@@ -135,19 +178,21 @@ void readGameDir(){
                 
                 strcpy(lista_jogos[nr_jogos++], entrada->d_name);
                 // # DEBUG
-                printf("Total: %d -- Nome: %s -- Nome saved : %s\n", 
-                nr_jogos, entrada->d_name, lista_jogos[nr_jogos-1]);
-            }   
+                #ifdef DEBUG
+                    printf("Total: %d -- Nome: %s -- Nome saved : %s\n", nr_jogos, entrada->d_name, lista_jogos[nr_jogos-1]);
+                #endif
+            }
         }
         closedir(dir);
     }
 
     // # DEBUG
-    printf("%d\n\n", nr_jogos);
-    for (int i=0; i < nr_jogos; i++) { 
-        printf("%s\n", lista_jogos[i]);
-    }
-
+    #ifdef DEBUG
+        printf("Nr. Jogos: %d\n", nr_jogos);
+        for (int i=0; i < nr_jogos; i++) { 
+            printf("[Nome do Jogo %d]: %s\n", i+1, lista_jogos[i]);
+        }
+    #endif
 }
 
 
@@ -188,8 +233,12 @@ Jogo create_game_process (const char* game_name) {
         fprintf(stderr, "Cannot execute Verificador! [2]\n");
         exit(EXIT_ERROR_PIPE);
     }
+    jogo.pid = fork();
+    #ifdef DEBUG
+        fprintf(stdout, "my pid is %d\n",jogo.pid);
+    #endif
 
-    switch (jogo.pid = fork())
+    switch (jogo.pid )
     {
         // Erro
         case -1:
@@ -204,14 +253,17 @@ Jogo create_game_process (const char* game_name) {
             close(pipeF[1]);
             // Close unused read on pipe Child, not need
             close(pipeC[0]);
-            
-            close(1); // stdout
-            // Duplicate. (stdout (1) -> pipeC[1] - write)
-            dup(pipeC[1]);
 
             close(0); // stdin
             // Duplicate. (stdin (0) -> pipeF[0] - read)
             dup(pipeF[0]);
+
+
+            close(1); // stdout
+            // Duplicate. (stdout (1) -> pipeC[1] - write)
+            dup(pipeC[1]);
+
+           
 
             close(pipeC[1]);
             close(pipeF[0]);
@@ -237,6 +289,8 @@ Jogo create_game_process (const char* game_name) {
 
             break;
     }
+
+    
 
 
 /*
@@ -275,8 +329,9 @@ void init_game(Jogador *jogador){
     // Atribuir a cada jogador, um jogo
         // 1. numero aleatorio até nr_jogos
     unsigned int nr_random = random_num(nr_jogos);
-    printf("calhou: %d\n\n", nr_random);
-
+    #ifdef DEBUG
+        printf("calhou: %d\n\n", nr_random);
+    #endif
         // 2. Executar o processo do jogo do nr aletorio
     strcpy(jogador->jogo.nome, lista_jogos[nr_random]);
 
@@ -286,34 +341,50 @@ void init_game(Jogador *jogador){
         // 4. Executar o processo do jogo
             // 3.1 Fork, fechar e duplicar descritores, guardar stdin e stdout.
         jogador->jogo = create_game_process(jogador->jogo.nome);
-        printf("[JOGO] nome: %s PID: %d pontuacao: %d\n", jogador->jogo.nome, jogador->jogo.pid, jogador->jogo.pontuacao);
+        #ifdef DEBUG
+            printf("[JOGO] nome: %s PID: %d pontuacao: %d\n", jogador->jogo.nome, jogador->jogo.pid, jogador->jogo.pontuacao);
+            printf("stdout -> %d\n", *jogador->jogo.stdout);
+        #endif
+        char buf[255];
+        
+        read(*jogador->jogo.stdout, &cliente.str, sizeof(cliente.str));
+        read(*jogador->jogo.stdout, &buf, sizeof(buf));
+        strcat(cliente.str, buf);
 
-    read(*jogador->jogo.stdout, &cliente.str, sizeof(cliente.str));
+        #ifdef DEBUG
+            printf("Eu li: %s \n Bytes: %d\n\n", cliente.str, strlen(cliente.str));
+        #endif
 
-    printf("Eu li: %s \n Bytes: %d", cliente.str, sizeof(cliente.str));
-    write_Tojogador(cliente);
+        write_Tojogador(cliente);
 }
 
 
 void init_campeonato() {
     for(unsigned int i=0; i < nr_users; i++){
         init_game(&lista_jogadores[i]);
-        printf("Game name: %s\n\n", lista_jogadores[i].jogo.nome);
+        #ifdef DEBUG
+            printf("Game name: %s\n\n", lista_jogadores[i].jogo.nome);
+        #endif
     }
 }
 
 void game_interact (ClientStruct jogador) {
     Jogador *j = get_jogador_by_pid(jogador.pid);
-
-    printf("[JOGADOR] nome: %s\n[JOGO] nome: %s PID: %d \n O QUE QUER:: %s ||| Tamanho : %d", j->username, j->jogo.nome, j->jogo.pid, jogador.str, sizeof(jogador.str));
+    #ifdef DEBUG
+        printf("[JOGADOR] nome: %s\n[JOGO] nome: %s PID: %d \n O QUE QUER:: %s ||| Tamanho : %d ", j->username, j->jogo.nome, j->jogo.pid, jogador.str, sizeof(jogador.str));
+    #endif
 
     strcat(jogador.str, "\n");
-    write(*j->jogo.stdin, jogador.str, sizeof(jogador.str));
-    printf("Eu escrevi: %s\n", jogador.str);
+    write(*j->jogo.stdin, &jogador.str, strlen(jogador.str));
+    #ifdef DEBUG
+        printf("\nEu escrevi: %s\n", jogador.str);
+    #endif
+
+    read(*j->jogo.stdout, &jogador.str, sizeof(jogador.str));
     
-    read(*j->jogo.stdout, jogador.str, sizeof(jogador.str));
-    
-    printf("Eu li: %s\n", jogador.str);
+    #ifdef DEBUG
+        printf("--Eu li: %s\n", jogador.str);
+    #endif
 
     write_Tojogador(jogador);
 }
@@ -345,22 +416,25 @@ void arbitroCommands (const char * cmd) {
         // TODO: retomar comunicação jogador-jogo (e.g: rrui ) 
     }
     else if(strcmp(cmd, "end") == 0) {
-        // TODO: Encerrar o campeonato
+        // Encerrar o campeonato
+        finish_champion();
     }
     else if(strcmp(cmd, "exit") == 0) {
         kick_all_users();
     }
     else if(strcmp(cmd, "init") == 0) {
         init_campeonato();
+    } else {
+        printf("\n-- Comando nao reconhecido --\n");    
     }
+   
     
-     // #DEBUG
-    printf("- users nr. %d - \n", nr_users);
-
     // #DEBUG
-    printf("Comando: %s \n", cmd);
+    #ifdef DEBUG
+        printf("- users nr. %d - \n", nr_users);
+        printf("Comando: %s \n", cmd);
+    #endif
 }
-
 
 
 void *thread_func(void *arg) {
@@ -475,14 +549,13 @@ int main (int argc, char *argv[])
         perro("Não existem jogos na pasta!\n A terminar..");
         exit(EXIT_ERROR_NO_GAMES);
     }
-    getchar();
-    getchar();
 
-
-    printf("Nº args : %d GameDir: %s max players %d\n"
-     "Duracao campeonato: %d Tempo espera: %d\n", argc, arbitro.gamedir, arbitro.maxplayers,
-     arbitro.duracao_campeonato, arbitro.tempo_espera);
-    fflush(stdout);
+    #ifdef DEBUG
+        printf("Nº args : %d | GameDir: %s | Max players %d\n"
+        "Duracao total campeonato: %d | Tempo espera por 2+ jogadores: %d\n", argc, arbitro.gamedir, arbitro.maxplayers,
+        arbitro.duracao_campeonato, arbitro.tempo_espera);
+        fflush(stdout);
+    #endif
     
    
     // CREATE THREAD To RECEIVE FROM USERS
@@ -535,26 +608,6 @@ int main (int argc, char *argv[])
 
 
 /*
-
-    if ((jogo.pid = fork()) == -1) {
-        perro("fork");
-        exit(EXIT_ERROR_CREATE_PROCESS);
-    }
-
-    if (jogo.pid == 0) {    // Child 
-        close(fd[0]);          // Close unused read, not need
-        close(1); // stdout
-        dup(fd[1]); // Duplicate. (stdout -> fd[1] - write)
-        close(fd[1]);
-
-        execl(jogo.nome, jogo.nome, NULL);
-
-        exit(EXIT_SUCCESS);
-    }
-
-    close (fd[1]); // Close unused write, not need
-
-
     printf("Introduza o PID do processo a eliminar: ");
     scanf("%d", &jogo.pid);
 

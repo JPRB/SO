@@ -76,8 +76,9 @@ void userCommands (const char* comm) {
         gameWrite(comm);
     }
     
-
-    printf("Comando: %s \n", comm);
+    #ifdef DEBUG
+        printf("Comando: %s \n", comm);
+    #endif
 }
 
 
@@ -124,8 +125,12 @@ void *receiver(void *arg)
 
         if (nBytes == 0)
             stop = 1;
-        printf("Li %d bytes\n", nBytes);
-        printf("%d", receive.action);
+        
+        #ifdef DEBUG
+            printf("Li %d bytes\n", nBytes);
+            printf("%d", receive.action);
+        #endif
+
         switch (receive.action)
         {
             case KICK: /* kick */
@@ -202,9 +207,10 @@ int main (int argc, char *argv[]) {
 
     read(fd_user, &myStruct, sizeof(myStruct));
     
-    //////////// DEBUG
-    printf("%d\n", myStruct.action);
-
+    #ifdef DEBUG
+        printf("N. da action: %d\n", myStruct.action);
+    #endif
+    
     if (myStruct.action == LOGGED)
         logged = 1;
     else if (myStruct.action == FAIL_LOGIN)
