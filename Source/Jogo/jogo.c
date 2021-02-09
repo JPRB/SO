@@ -8,7 +8,6 @@ int continua=1;
 
 void trataSinalExit (int sigNum) {
   signal(sigNum, SIG_IGN);
-  fprintf(stderr, "trata Sinal FUNC\n");
   continua=0;
 }
 
@@ -24,7 +23,7 @@ int main(int argc, char *argv[])
   struct sigaction act =  {
       
       .sa_mask = set,
-	    .sa_flags = SA_RESTART | SA_RESETHAND,
+	    .sa_flags = SA_RESETHAND,
       // Function handler 
       .sa_handler = &trataSinalExit
   };
@@ -76,7 +75,7 @@ int main(int argc, char *argv[])
         pontos--;
     }
   }
-  printf("\n\nAcabou com %d pontos\n",pontos);
+  //printf("\n\nAcabou com %d pontos\n",pontos);
   //fflush(stdout);
   exit(pontos);
 }
