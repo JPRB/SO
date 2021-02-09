@@ -14,7 +14,7 @@
 #include <pthread.h>
 #include <errno.h>
 
-//#define DEBUG
+#define DEBUG
 
 #define OK 0
 #define EXIT_ERROR_ARGUMENTS 1
@@ -33,9 +33,12 @@
 #define LOGOUT 101
 #define LOGGED 102
 #define FAIL_LOGIN 103
-#define CHAMPIONSHIP_ALREADY_STARTED 104
-#define KICK 105
+#define KICK 104
+#define SUS_MSG_GAME_2_PLAYER 403
+#define RET_MSG_GAME_2_PLAYER 404
+#define CHAMPIONSHIP_ALREADY_STARTED 405
 #define GAME_NAME 406
+#define GAME 410
 /*
 #define LOGIN
 #define LOGIN
@@ -71,6 +74,7 @@ typedef struct
 {
     int pid;
     char username[MAXCHARS];
+    int sus_comunicacao;
     Jogo jogo;
 } Jogador;
 
@@ -81,8 +85,8 @@ typedef struct
     int maxplayers;
     int duracao_campeonato;
     int tempo_espera; // Tempo máximo de espera apoś 2 jogadores (segundos)
-    int nr_jogos;
-    int nr_users;
+    unsigned int nr_jogos;
+    unsigned int nr_users;
 } Arbitro;
 
 
@@ -92,7 +96,6 @@ typedef struct
     int pid;
     char cmd_1[100];
     char str[100];
-    Jogador jogador;
 } ClientStruct;
 
 

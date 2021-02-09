@@ -4,15 +4,15 @@
 
 
 //unsigned int nr_users;
-unsigned int nr_jogos=0;
 int can_login = 1;
 int stopThread = 0, stop_ThreadGame = 0;
 Jogador lista_jogadores[MAXPLAYERS];
 Arbitro arbitro;
 char lista_jogos[30][MAXCHARS];
+int flag;
 
 
-void write_Tojogador(ClientStruct client){
+void write_game_To_jogador(ClientStruct client){
     char pipe[15];
 
     sprintf(pipe, "pipe-%d", client.pid);
@@ -20,12 +20,14 @@ void write_Tojogador(ClientStruct client){
 
     if (fd_player == -1)
     {
-        perror("Erro a abrir o Cliente Pipe!!\n");
+        perror("Erro a abrir o Cliente Pipe!! [1]\n");
         unlink(ARBITRO_PIPE);
         exit(EXIT_ERROR_PIPE);
     }
     // dar feedBack ao user
     write(fd_player, &client, sizeof(client));
+
+    close(fd_player);
 }
 
 void *game_thread(void *arg) {
@@ -38,8 +40,11 @@ void *game_thread(void *arg) {
         printf("Stdin: %d -- stdout %d\n", player.jogo.stdin, player.jogo.stdout);
     #endif
 
+    while (flag == 0);
+    
+
     send.pid = player.pid;
-   
+    send.action = GAME;
     do {
         if (read(player.jogo.stdout, send.str, sizeof(send.str)) > 0) {
 
@@ -47,7 +52,7 @@ void *game_thread(void *arg) {
                 printf("Eu li do pipe do Jogo: \n%s\n--- Tamanho: [%ld] bytes\n",  send.str, strlen(send.str));
             #endif
 
-            write_Tojogador(send);
+            write_game_To_jogador(send);
         }
         
     } while (!stop_ThreadGame);
@@ -60,7 +65,7 @@ void finish_champion()
 {
     ClientStruct send;
     // Campeonato END 
-    // send.action = ;
+    // send.action = GAME;
     for (int i=0; i < arbitro.nr_users; i++) {
         Jogador player;
         strcpy(player.username ,lista_jogadores[i].username);
@@ -70,22 +75,31 @@ void finish_champion()
 
         // Enviar Singla SIGUSR1 to kill game
         //union sigval sigval1;
-        if(sigqueue(player.jogo.pid, SIGUSR1, NULL) != -1)
-        {
-        
+        /*if(sigqueue(player.jogo.pid, SIGUSR1, 0) != -1)
+        {*/
+        kill(player.jogo.pid, SIGUSR1);
+
         int game_PID = wait(&player.jogo.pontuacao);
 
         // #DEBUG
         #ifdef DEBUG
             fprintf(stdout, "\n PID JOGO %d EQUALS PID GAME WAIT? %d\n", player.jogo.pid, game_PID);
+
+            if (WIFEXITED(player.jogo.pontuacao)) {
+                printf("Jogador %s --> Jogo Pontuacao: %d\n", player.username, WEXITSTATUS(player.jogo.pontuacao));
+            }
         #endif
 
+        // Enviar a pontuação para o Jogador pelo pipe?  por sigqueue
+        send.pid = player.pid;
         if (WIFEXITED(player.jogo.pontuacao)) {
-            printf("Jogador %s --> Jogo Pontuacao: %d\n", player.username, WEXITSTATUS(player.jogo.pontuacao));
+            send.str[0] = WEXITSTATUS(player.jogo.pontuacao);
+            write_game_To_jogador(send);
         }
-        }
-        // Enviar a pontuação para o Jogador pelo pipe
-        
+        //}
+    
+    
+        // Fechar as Threads de cada Jogo
     }
     // Campeonato Over!!!
     printf("------ Acabou Campeonato!! ---------\n");
@@ -184,7 +198,7 @@ void user_login(int pid, const char * username) {
         send.action = CHAMPIONSHIP_ALREADY_STARTED;
     }
 
-    write_Tojogador(send);
+    write_game_To_jogador(send);
 }
 
 
@@ -352,7 +366,7 @@ void send_gameName_to_jogador(int pid, const char* game_name) {
     jogador.action = GAME_NAME;
     strcpy(jogador.str, game_name);
 
-    write_Tojogador(jogador);
+    write_game_To_jogador(jogador);
 }
 
 void init_game(Jogador *jogador){
@@ -397,13 +411,14 @@ void init_campeonato() {
         for(unsigned int i=0; i < arbitro.nr_users; i++){
             init_game(&lista_jogadores[i]);
             #ifdef DEBUG
-                printf("Game name: %s\n\n", lista_jogadores[i].jogo.nome);
+                printf("After create Hame process::  Game name: %s\n\n", lista_jogadores[i].jogo.nome);
             #endif
         }
+        flag=1;
     }
     else
     {
-        printf("Não é possivel inical Campeonato Sem Jogadores\n");
+        printf("Não é possivel iniciar Campeonato Sem Jogadores\n");
     }
     
 }
@@ -417,6 +432,37 @@ void game_interact (ClientStruct jogador) {
         printf("\nEu escrevi para o pipe do jogo: %s\n", jogador.str);
     #endif
 }
+
+
+void comunicacao_jogo(int comunicacao, char playerName[MAXCHARS])
+{   int found=0;
+    ClientStruct cliStruct;
+
+    for(unsigned int i=0; i < arbitro.nr_users; i++){
+        if (strcmp(lista_jogadores[i].username, playerName) == 0 )
+        {
+            cliStruct.action = comunicacao;
+            cliStruct.pid = lista_jogadores[i].pid;
+            found = 1;
+
+            if (comunicacao == SUS_MSG_GAME_2_PLAYER)
+                lista_jogadores[i].sus_comunicacao = 1;
+            else if (comunicacao == RET_MSG_GAME_2_PLAYER)
+                lista_jogadores[i].sus_comunicacao = 0;
+
+            break;
+        }  
+    }
+
+    if (found)
+    {
+        write_game_To_jogador(cliStruct);
+    }
+    else {
+        printf("Utilizador não encontrado\n");
+    }
+}
+
 
 void arbitroCommands (const char * cmd) {
     char sub_cmd[MAXCHARS] = "";
@@ -439,10 +485,12 @@ void arbitroCommands (const char * cmd) {
         
     }
     else if (cmd[0] == 's') {
-        // TODO: mensagens jogador-jogo ficam suspensas (e.g: srui ) 
+        // TODO: mensagens jogador-jogo ficam suspensas (e.g: srui )
+        comunicacao_jogo(SUS_MSG_GAME_2_PLAYER, sub_cmd);
     }
     else if (cmd[0] == 'r') {
-        // TODO: retomar comunicação jogador-jogo (e.g: rrui ) 
+        // TODO: retomar comunicação jogador-jogo (e.g: rrui )
+        comunicacao_jogo(RET_MSG_GAME_2_PLAYER, sub_cmd);
     }
     else if(strcmp(cmd, "end") == 0) {
         // Encerrar o campeonato
@@ -466,15 +514,14 @@ void arbitroCommands (const char * cmd) {
 }
 
 
+// Thread To read my Pipe and write to jogador pipe
 void *thread_func(void *arg) {
     ClientStruct receive;
 
     int fd, fd_send;
-    //char pipe[15]11];
 
-    //mkfifo(ARBITRO_PIPE, 0600);
     // OPEN ARBITRO PIPE
-    fd = open(ARBITRO_PIPE, O_RDONLY);
+    fd = open(ARBITRO_PIPE, O_RDWR);
 
     if (fd == -1)
     {
@@ -488,7 +535,7 @@ void *thread_func(void *arg) {
         //sprintf(pipe, "pipe-%d", receive.pid);
         //fd_send = open(pipe, O_WRONLY, 0600);
         #ifdef DEBUG
-            printf("received %d -- [%d]\n", receive.action, n);
+            printf("Received Action %d -- [%d] bytes\n", receive.action, n);
         #endif
         switch (receive.action) {
             case LOGIN:
@@ -500,8 +547,12 @@ void *thread_func(void *arg) {
             case LOGOUT:
                 delete_user_by_PID(receive.pid);
                 break;
-            default:
+            case GAME_NAME:
+                send_gameName_to_jogador(receive.pid, get_jogador_by_pid(receive.pid)->jogo.nome);
+                break;
+            case GAME:
                 game_interact(receive);
+            default:
                 break;
         }
     } while (!stopThread);
@@ -523,6 +574,9 @@ void *campeonato(void *arg) {
 
     // ################## Inicio do Campeonato #################
     init_campeonato();
+
+    sleep(arbitro.duracao_campeonato);
+
 }
 
 
@@ -533,7 +587,6 @@ int main (int argc, char *argv[])
 
     pthread_t thread, threadCampeonato;
 
-    int fd_game[2], fd;
     char cmd[50];
 
     setbuf(stdout, NULL);
@@ -549,6 +602,7 @@ int main (int argc, char *argv[])
         exit(EXIT_INVALID_ARGUMENTS);
     }
 
+    flag = 0;
     arbitro.nr_users = 0;
     arbitro.nr_jogos = 0;
     arbitro.duracao_campeonato = atoi(argv[1]);

@@ -8,23 +8,30 @@ int continua=1;
 
 void trataSinalExit (int sigNum) {
   signal(sigNum, SIG_IGN);
+  fprintf(stderr, "trata Sinal FUNC\n");
   continua=0;
 }
 
 
 int main(int argc, char *argv[])
 {
-  int pontos = 0;
+  int pontos = 9999;
   char buffer[10] = "\0";
   srand(time(NULL));
 
   setbuf(stdout, NULL);
-  struct sigaction act;
+  sigset_t set;
+  struct sigaction act =  {
+      
+      .sa_mask = set,
+	    .sa_flags = SA_RESTART | SA_RESETHAND,
+      // Function handler 
+      .sa_handler = &trataSinalExit
+  };
 	
-	// Function handler 
-	act.sa_handler = &trataSinalExit;
-	sigfillset(&act.sa_mask);
-	act.sa_flags = SA_RESTART | SA_NOCLDSTOP | SA_NOCLDWAIT;
+	sigemptyset(&set);
+  sigaddset(&set, SIGUSR1);
+	
 	
 	if(sigaction(SIGUSR1, &act, NULL) == -1)
 	{
@@ -36,10 +43,9 @@ int main(int argc, char *argv[])
   fflush(stdout);
   printf("\nO objetivo deste jogo e' apenas testar as funcionalidades do sistema CHAMPION.");
   fflush(stdout);
-  printf("\nTente acertar no numero que o computador vai gerar entre 0 e 5. ");
+  printf("\nTente acertar no numero que o computador vai gerar entre 0 e 5.\nBOA SORTE!\n");
   fflush(stdout);
-  printf("BOA SORTE!\n");
-  fflush(stdout);
+  
   while(continua)
   {
     int randomNUM = rand() % 6;

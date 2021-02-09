@@ -29,6 +29,20 @@ void forced_shutdown() {
 }
 
 
+void write_Arbitro(ClientStruct info) {
+    char pipe[11];
+    int fd;
+
+    info.pid = getpid();
+    sprintf(pipe, "pipe-%d", getpid());
+
+    fd = open(ARBITRO_PIPE, O_WRONLY, 0600);
+    
+    write(fd, &info, sizeof(info));
+
+    close(fd);
+}
+
 
 void shutdown() {
     char pipe[11];
@@ -43,30 +57,36 @@ void shutdown() {
     fd = open(ARBITRO_PIPE, O_WRONLY, 0600);
     
     write(fd, &myStruct, sizeof(myStruct));
+    close(fd);
     unlink(pipe);
     exit(SHUTDOWN);
 }
 
 void gameWrite(const char *gameInstruction) {
     ClientStruct myStruct;
-    int fd;  
 
-    myStruct.pid = getpid();
+    #ifdef DEBUG
+        printf("Game: %s", gameInstruction);
+    #endif
 
-    fd = open(ARBITRO_PIPE, O_WRONLY, 0600);
-    
+    myStruct.action = GAME;
     strcpy(myStruct.str, gameInstruction);
 
-    write(fd, &myStruct, sizeof(myStruct));
+    write_Arbitro(myStruct);
+}
 
-    close(fd);
+void myGameIs() {
+    ClientStruct myStruct;
+
+    myStruct.action = GAME_NAME;
+    write_Arbitro(myStruct);
 }
 
 void userCommands (const char* comm) {
 
     if (strcmp(comm, "#mygame") == 0)
     {
-        // TODO:
+        myGameIs();
     }
     else if (strcmp(comm, "#quit") == 0) {
         shutdown();
@@ -80,9 +100,6 @@ void userCommands (const char* comm) {
         printf("Comando: %s \n", comm);
     #endif
 }
-
-
-
 
 void gameRead(ClientStruct myStruct)
 {
@@ -108,7 +125,7 @@ void login (int *fd_arbitro) {
     myStruct.action = LOGIN;
     int n = write(*fd_arbitro, &myStruct, sizeof(myStruct));
     #ifdef DEBUG
-        printf("Escrevi [%d] bytes\n", n);
+        printf("Escrevi Acao [%d] e info com [%d] bytes\n", myStruct.action, n);
     #endif
 }
 
@@ -121,7 +138,7 @@ void *receiver(void *arg)
     int nBytes;
 
     sprintf(pipe, "pipe-%d", getpid());
-    fd_pipe = open(pipe, O_RDONLY);
+    fd_pipe = open(pipe, O_RDWR);
 
     do
     {
@@ -146,10 +163,20 @@ void *receiver(void *arg)
                 printf("Nome do jogo: %s\n", receive.str);
                 break;
                 
-            default:
+            case SUS_MSG_GAME_2_PLAYER:
+                printf("As mensagens entre o jogo e o seu Cliente foram suspensas\n");
+                break;
+
+            case RET_MSG_GAME_2_PLAYER:
+                printf("As mensagens entre o jogo e o seu Cliente foram retomadas\n");
+                break;
+
+            case GAME:
                 gameRead(receive);
                 break;
 
+            default:
+                break;
         }
 
     } while (stop == 0);
