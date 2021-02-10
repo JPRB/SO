@@ -15,7 +15,7 @@
 #include <dirent.h>
 #include <signal.h>
 
-#define DEBUG
+// #define DEBUG
 
 #define OK 0
 #define EXIT_ERROR_ARGUMENTS 1
@@ -40,20 +40,7 @@
 #define CHAMPIONSHIP_ALREADY_STARTED 405
 #define GAME_NAME 406
 #define GAME 410
-/*
-#define LOGIN
-#define LOGIN
-#define LOGIN
-#define LOGIN
-#define LOGIN
-#define LOGIN
-#define LOGIN
-#define LOGIN
-#define LOGIN
-#define LOGIN
-#define LOGIN
-#define LOGIN
-*/
+
 
 // Arbitro NAMED PIPE 
 #define ARBITRO_PIPE "arbitro_pipe"
