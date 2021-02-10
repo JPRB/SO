@@ -14,7 +14,7 @@ void trataSinalExit (int sigNum) {
 
 int main(int argc, char *argv[])
 {
-  int pontos = 9999;
+  int pontos = 0;
   char buffer[10] = "\0";
   srand(time(NULL));
 
@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
   struct sigaction act =  {
       
       .sa_mask = set,
-	    .sa_flags = SA_RESETHAND,
+	    .sa_flags = 0,
       // Function handler 
       .sa_handler = &trataSinalExit
   };
@@ -42,34 +42,34 @@ int main(int argc, char *argv[])
   fflush(stdout);
   printf("\nO objetivo deste jogo e' apenas testar as funcionalidades do sistema CHAMPION.");
   fflush(stdout);
-  printf("\nTente acertar no numero que o computador vai gerar entre 0 e 5.\nBOA SORTE!\n");
+  printf("\nTente acertar no numero que o computador vai gerar entre 1 e 5.\nBOA SORTE!\n");
   fflush(stdout);
   
   while(continua)
   {
-    int randomNUM = rand() % 6;
+    int randomNUM = (rand() % 5) +1;
     /*do {
       printf("\n\nAdivinhe o numero gerado:");
       fflush(stdout);
-      scanf("%1[^\n]", buffer);
-      
+      scanf(" %1[^\n]", buffer);
+      while (fgetc(stdin) != '\n');
     }
     while (!isdigit(buffer));*/
-    //while (fgetc(stdin) != '\0');
+    
 
     fprintf(stdout, "\n\nAdivinhe o numero gerado: ");
     fflush(stdout);
     scanf(" %[^\n]s", buffer);
 
     int n = atoi(buffer);
- 
+
     if (n == randomNUM) {
       printf("Bingo!!!\n");
       fflush(stdout);
       pontos ++;
     }
     else {
-      printf("Errou ... o numero era o: %d",randomNUM);
+      printf("Errou ... o numero era o: %d\n",randomNUM);
       fflush(stdout);
       if (pontos > 0)
         pontos--;

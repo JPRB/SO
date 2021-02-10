@@ -4,15 +4,16 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
-#include <fcntl.h>
 #include <sys/types.h>
-#include <sys/stat.h>
-#include <signal.h>
+#include <unistd.h>
 #include <sys/wait.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 #include <pthread.h>
 #include <errno.h>
+#include <dirent.h>
+#include <signal.h>
 
 #define DEBUG
 
@@ -76,6 +77,7 @@ typedef struct
     char username[MAXCHARS];
     int sus_comunicacao;
     Jogo jogo;
+    pthread_mutex_t mutex;
 } Jogador;
 
 
@@ -87,6 +89,7 @@ typedef struct
     int tempo_espera; // Tempo máximo de espera apoś 2 jogadores (segundos)
     unsigned int nr_jogos;
     unsigned int nr_users;
+    int campeonato_on;
 } Arbitro;
 
 

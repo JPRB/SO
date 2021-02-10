@@ -1,108 +1,133 @@
 
 #include "main.h"
-#include <dirent.h>
-
 
 //unsigned int nr_users;
 int can_login = 1;
-int stopThread = 0, stop_ThreadGame = 0;
+int stopThread = 0;
 Jogador lista_jogadores[MAXPLAYERS];
 Arbitro arbitro;
 char lista_jogos[30][MAXCHARS];
-int flag;
+pthread_mutex_t mutex;
 
+void write_game_To_jogador(ClientStruct client) {
+    char pipe[11];
 
-void write_game_To_jogador(ClientStruct client){
-    char pipe[15];
+    #ifdef DEBUG
+        printf("[CLIENT] PID: %d | Action: %d \n", client.pid, client.action);
+    #endif
 
     sprintf(pipe, "pipe-%d", client.pid);
     int fd_player = open(pipe, O_WRONLY);
 
     if (fd_player == -1)
     {
-        perror("Erro a abrir o Cliente Pipe!! [1]\n");
-        unlink(ARBITRO_PIPE);
-        exit(EXIT_ERROR_PIPE);
-    }
-    // dar feedBack ao user
-    write(fd_player, &client, sizeof(client));
+        fprintf(stdout, "Erro a abrir o Cliente Pipe!! erro: %s [1]\n", strerror(errno));
+        //unlink(ARBITRO_PIPE);
+        //exit(EXIT_ERROR_PIPE);
+    } else {
+        // dar feedBack ao user
+        write(fd_player, &client, sizeof(client));
 
-    close(fd_player);
+        close(fd_player);
+    }
 }
 
 void *game_thread(void *arg) {
 
     Jogador player = *((Jogador *)(arg));
-    ClientStruct send;
+    ClientStruct send = {
+        .pid = player.pid,
+        .action = GAME
+    };
+
+    int n;
 
     #ifdef DEBUG
-        printf("[JOGADOR] nome: %s Pid %d\n[JOGO] nome: %s PID: %d \n", player.username, player.pid, player.jogo.nome, player.jogo.pid);
+        printf("[JOGADOR] nome: %s Pid %d\n[JOGO] nome: %s PID: %d \nSuspensão da comunicação %d\n", player.username, 
+        player.pid, player.jogo.nome, player.jogo.pid, player.sus_comunicacao);
         printf("Stdin: %d -- stdout %d\n", player.jogo.stdin, player.jogo.stdout);
     #endif
 
-    while (flag == 0);
-    
+   
 
-    send.pid = player.pid;
-    send.action = GAME;
-    do {
-        if (read(player.jogo.stdout, send.str, sizeof(send.str)) > 0) {
+    do {   
+            n = read(player.jogo.stdout, send.str, sizeof(send.str));
+            if (n > 0 && !player.sus_comunicacao) {
+                pthread_mutex_unlock(&mutex);
+                send.str[n] = '\0';  
+                #ifdef DEBUG
+                    printf("Eu li do descritor [%d] do Jogo: \n%s\n--- Tamanho: [%ld] bytes\n",  player.jogo.stdout, send.str, strlen(send.str));
+                #endif
+                write_game_To_jogador(send);
+                pthread_mutex_lock(&mutex);
+            }
+            
+    } while (n!=0);
 
-            #ifdef DEBUG
-                printf("Eu li do pipe do Jogo: \n%s\n--- Tamanho: [%ld] bytes\n",  send.str, strlen(send.str));
-            #endif
+    #ifdef DEBUG
+        printf("Final da Thread \n");
+    #endif
 
-            write_game_To_jogador(send);
-        }
-        
-    } while (!stop_ThreadGame);
-
-    
+    pthread_exit(EXIT_SUCCESS);
 }
 
-
-void finish_champion()
+void finish_campeonato ()
 {
     ClientStruct send;
     // Campeonato END 
-    // send.action = GAME;
-    for (int i=0; i < arbitro.nr_users; i++) {
-        Jogador player;
-        strcpy(player.username ,lista_jogadores[i].username);
-        player.jogo = lista_jogadores[i].jogo;
+    send.action = GAME;
+    if (arbitro.campeonato_on) {
+        for (int i=0; i < arbitro.nr_users; i++) {
+            Jogador player;
+            strcpy(player.username ,lista_jogadores[i].username);
+            player.jogo = lista_jogadores[i].jogo;
+            player.pid = lista_jogadores[i].pid;
 
-        // Enviar signal SIGUSR1 to Jogador a dizer que campeonato terminou
+            // Enviar signal SIGUSR1 to Jogador a dizer que campeonato terminou
+            kill(player.pid, SIGUSR1);
 
-        // Enviar Singla SIGUSR1 to kill game
-        //union sigval sigval1;
-        /*if(sigqueue(player.jogo.pid, SIGUSR1, 0) != -1)
-        {*/
-        kill(player.jogo.pid, SIGUSR1);
+            // Enviar Singla SIGUSR1 to kill game
+            int sig_kill = kill(player.jogo.pid, SIGUSR1);
+            close(lista_jogadores[i].jogo.stdin);
+            close(lista_jogadores[i].jogo.stdout);
+            if (player.jogo.pid==wait(&player.jogo.pontuacao))
+            {
+                #ifdef DEBUG
+                    printf("WAIT PID CORRECT\n");
+                #endif
 
-        int game_PID = wait(&player.jogo.pontuacao);
-
-        // #DEBUG
-        #ifdef DEBUG
-            fprintf(stdout, "\n PID JOGO %d EQUALS PID GAME WAIT? %d\n", player.jogo.pid, game_PID);
-
-            if (WIFEXITED(player.jogo.pontuacao)) {
-                printf("Jogador %s --> Jogo Pontuacao: %d\n", player.username, WEXITSTATUS(player.jogo.pontuacao));
+                if (sig_kill == 0)
+                {
+                    // #DEBUG
+                    #ifdef DEBUG
+                        if (WIFEXITED(player.jogo.pontuacao)) {
+                            printf("Jogador %s --> Jogo Pontuacao: %d \n", player.username, WEXITSTATUS(player.jogo.pontuacao));
+                        }
+                    #endif
+    
+                    // Enviar a pontuação para o Jogador pelo pipe
+                    send.pid = player.pid;
+                    if (WIFEXITED(player.jogo.pontuacao)) {
+                        sprintf(send.str, "Acabou o Campeonato!\nObteve a pontuação de %d pontos.\n", WEXITSTATUS(player.jogo.pontuacao));
+                        pthread_mutex_unlock(&mutex);
+                        write_game_To_jogador(send);
+                        pthread_mutex_lock(&mutex); 
+                    }
+    
+                    
+                }
+                pthread_kill(player.jogo.gameThread, NULL);
             }
-        #endif
-
-        // Enviar a pontuação para o Jogador pelo pipe?  por sigqueue
-        send.pid = player.pid;
-        if (WIFEXITED(player.jogo.pontuacao)) {
-            send.str[0] = WEXITSTATUS(player.jogo.pontuacao);
-            write_game_To_jogador(send);
+            // Enviar o nome do vencedor
         }
-        //}
-    
-    
-        // Fechar as Threads de cada Jogo
+        // Campeonato Over!!!
+        printf("------ Acabou Campeonato!! ---------\n");
+        can_login = 1;
+    } 
+    else 
+    {
+        printf("Campeonato não existe, logo não pode ser terminado!\n");
     }
-    // Campeonato Over!!!
-    printf("------ Acabou Campeonato!! ---------\n");
 }
 
 
@@ -128,25 +153,26 @@ int getEnvironmentVars () {
 }
 
 int kick_user (const char *name) {
-    int fd_user, pid, val=1;
+    int fd_user, val=1;
     char pipe[11];
     ClientStruct send;
+    send.action = KICK;
 
-    if((pid = get_pid_By_username(name)) != -1)
+    if((send.pid = get_pid_By_username(name)) != -1)
     {
         delete_user_by_name(name);
     
-        sprintf(pipe, "pipe-%d", pid);
+        sprintf(pipe, "pipe-%d", send.pid);
         fd_user = open(pipe, O_WRONLY);
 
         if (fd_user == -1)
         {
-            perro("Erro a abrir o Cliente Pipe!!\n");
+            fprintf(stderr, "Erro a abrir o Cliente Pipe!!\n");
+            unlink(ARBITRO_PIPE);
             exit(EXIT_ERROR_PIPE);
         }
 
         // dar feedBack ao user
-        send.action = KICK;
         write(fd_user, &send, sizeof(send));
 
         close(fd_user);
@@ -180,6 +206,10 @@ void user_login(int pid, const char * username) {
     ClientStruct send;
     send.pid = pid;
 
+    #ifdef DEBUG
+        printf("[LOGIN] pid %d | username %s\n", pid, username);
+    #endif
+
     if (can_login && (arbitro.nr_users < arbitro.maxplayers))
     {
         if (!existe_jogador(username))
@@ -202,7 +232,7 @@ void user_login(int pid, const char * username) {
 }
 
 
-void readGameDir(){
+void readGameDir() {
     char * dirname;
     DIR *dir;
 
@@ -280,7 +310,7 @@ Jogo create_game_process (const char* game_name) {
     {
         // Erro
         case -1:
-            perro("Error on fork");
+            fprintf(stderr, "Error on fork");
             exit(EXIT_ERROR_CREATE_PROCESS);
             break;
 
@@ -323,7 +353,9 @@ Jogo create_game_process (const char* game_name) {
                 exit(EXIT_ERROR_EXEC_GAME);
             }
 
-            fprintf(stderr, "Não devia chegar aqui");
+            #ifdef DEBUG
+                fprintf(stderr, "Não devia chegar aqui\n");
+            #endif
 
             exit(EXIT_SUCCESS);
             break;
@@ -338,23 +370,6 @@ Jogo create_game_process (const char* game_name) {
             break;
     }
 
-    
-
-
-/*
-    printf("Introduza o PID do processo a eliminar: ");
-    scanf("%d", &jogo.pid);
-
-    if (kill(jogo.pid, SIGUSR1) == -1) {
-        perro("Erro a enviar signal\n");
-    }
-
-    waitpid(jogo.pid, &jogo.pontuacao, 0);
-
-    // wait(&jogo.pontuacao);
-    if (WEXITSTATUS(jogo.pontuacao)) {
-        printf("Jogo Pontuação: %d", WEXITSTATUS(jogo.pontuacao));
-    }*/
 
     return jogo;
 }
@@ -369,7 +384,7 @@ void send_gameName_to_jogador(int pid, const char* game_name) {
     write_game_To_jogador(jogador);
 }
 
-void init_game(Jogador *jogador){
+void init_game(Jogador *jogador) {
 
     // Atribuir a cada jogador, um jogo
         // 1. numero aleatorio até nr_jogos
@@ -381,7 +396,6 @@ void init_game(Jogador *jogador){
     strcpy(jogador->jogo.nome, lista_jogos[nr_random]);
 
        
-
         // 3. Executar o processo do jogo
             // 3.1 Fork, fechar e duplicar descritores, guardar stdin e stdout.
         jogador->jogo = create_game_process(jogador->jogo.nome);
@@ -389,10 +403,12 @@ void init_game(Jogador *jogador){
             printf("[JOGO] nome: %s PID: %d pontuacao: %d\n", jogador->jogo.nome, jogador->jogo.pid, jogador->jogo.pontuacao);
             printf("stdout -> %d -- stdin -> %d\n", jogador->jogo.stdout, jogador->jogo.stdin);
         #endif       
-       
+
     // 4. Indicar o jogo atribuido ao Jogador
     send_gameName_to_jogador(jogador->pid, jogador->jogo.nome);
 
+
+    
 
     // Create Thread Game
     if (pthread_create(&jogador->jogo.gameThread, NULL, game_thread, (void *) jogador) != 0)
@@ -406,31 +422,40 @@ void init_game(Jogador *jogador){
 
 void init_campeonato() {
 
-    if (arbitro.nr_users > 0) {
-
-        for(unsigned int i=0; i < arbitro.nr_users; i++){
-            init_game(&lista_jogadores[i]);
-            #ifdef DEBUG
-                printf("After create Hame process::  Game name: %s\n\n", lista_jogadores[i].jogo.nome);
-            #endif
+    if (!arbitro.campeonato_on) {
+        if (arbitro.nr_users > 0) {
+            arbitro.campeonato_on = 1;
+            for(unsigned int i=0; i < arbitro.nr_users; i++){
+                init_game(&lista_jogadores[i]);
+                #ifdef DEBUG
+                    printf("After create Game process::  Game name: %s\n\n", lista_jogadores[i].jogo.nome);
+                #endif
+            }
         }
-        flag=1;
+        else
+        {
+            printf("Não é possivel iniciar Campeonato Sem Jogadores\n");
+        }
     }
     else
     {
-        printf("Não é possivel iniciar Campeonato Sem Jogadores\n");
+        printf("Campeonato a decorrer\n");
     }
+    
     
 }
 
 void game_interact (ClientStruct jogador) {
     Jogador *j = get_jogador_by_pid(jogador.pid);
 
-    strcat(jogador.str, "\n");
-    write(j->jogo.stdin, jogador.str, strlen(jogador.str));
-    #ifdef DEBUG
-        printf("\nEu escrevi para o pipe do jogo: %s\n", jogador.str);
-    #endif
+    if (!j->sus_comunicacao)
+    {
+        strcat(jogador.str, "\n");
+        write(j->jogo.stdin, jogador.str, strlen(jogador.str));
+        #ifdef DEBUG
+            printf("\nEu escrevi para o pipe do jogo [STDIN:%d]: %s\n", j->jogo.stdin, jogador.str);
+        #endif
+    }
 }
 
 
@@ -480,21 +505,20 @@ void arbitroCommands (const char * cmd) {
         listar_jogos();
     }
     else if (cmd[0] == 'k') {
-        // kick user (e.g: krui - remove jogador 'rui') 
+        // kick user (e.g: krui - remove jogador 'rui')
         kick_user(sub_cmd);
-        
     }
     else if (cmd[0] == 's') {
-        // TODO: mensagens jogador-jogo ficam suspensas (e.g: srui )
+        // mensagens jogador-jogo ficam suspensas (e.g: srui )
         comunicacao_jogo(SUS_MSG_GAME_2_PLAYER, sub_cmd);
     }
     else if (cmd[0] == 'r') {
-        // TODO: retomar comunicação jogador-jogo (e.g: rrui )
+        // retomar comunicação jogador-jogo (e.g: rrui )
         comunicacao_jogo(RET_MSG_GAME_2_PLAYER, sub_cmd);
     }
     else if(strcmp(cmd, "end") == 0) {
         // Encerrar o campeonato
-        finish_champion();
+        finish_campeonato(); 
     }
     else if(strcmp(cmd, "exit") == 0) {
         kick_all_users();
@@ -525,13 +549,14 @@ void *thread_func(void *arg) {
 
     if (fd == -1)
     {
-        perro("Erro a abrir o Arbitro Pipe!!\n A terminar...\n");
+        fprintf(stderr, "Erro a abrir o Arbitro Pipe!!\n A terminar...\n");
         exit(EXIT_ERROR_PIPE);
     }
 
      do {
         int n = read(fd, &receive, sizeof(receive));
-            
+        if (n == 0)
+            stopThread = 1; 
         //sprintf(pipe, "pipe-%d", receive.pid);
         //fd_send = open(pipe, O_WRONLY, 0600);
         #ifdef DEBUG
@@ -542,40 +567,58 @@ void *thread_func(void *arg) {
                 #ifdef DEBUG
                     printf("Login\n");
                 #endif     
+                pthread_mutex_lock(&mutex);
                 user_login(receive.pid, receive.str);
+                pthread_mutex_unlock(&mutex);
                 break;
             case LOGOUT:
+                pthread_mutex_lock(&mutex);
                 delete_user_by_PID(receive.pid);
+                pthread_mutex_unlock(&mutex);
                 break;
             case GAME_NAME:
+                pthread_mutex_lock(&mutex);
                 send_gameName_to_jogador(receive.pid, get_jogador_by_pid(receive.pid)->jogo.nome);
+                pthread_mutex_unlock(&mutex);
                 break;
             case GAME:
+                
                 game_interact(receive);
+                
             default:
                 break;
         }
     } while (!stopThread);
     
     close(fd);
+    pthread_exit(EXIT_SUCCESS);
 }
 
 
 void *campeonato(void *arg) {
-    Arbitro arbitro = *((Arbitro *) arg);
 
     // ######## Aguardar por pelo menos 2 jogadores ############
     while (arbitro.nr_users < 2);
 
+    printf("Tempo de espera por novos jogadores..\n");
+
     sleep(arbitro.tempo_espera);
+
+
+    printf("O Campeonato Vai começar..\n");
 
     // Var de controlo para não poderem logar...
     can_login = 0;
 
     // ################## Inicio do Campeonato #################
+    pthread_mutex_lock(&mutex);
     init_campeonato();
+    pthread_mutex_unlock(&mutex);
 
     sleep(arbitro.duracao_campeonato);
+
+    finish_campeonato();
+    
 
 }
 
@@ -586,27 +629,27 @@ int main (int argc, char *argv[])
     ClientStruct champ;
 
     pthread_t thread, threadCampeonato;
-
+    pthread_mutex_init(&mutex, NULL);
     char cmd[50];
 
     setbuf(stdout, NULL);
 
     if (argc != 3) {
-        perro("Missing arguments!\n");
+        fprintf(stderr, "Missing arguments!\n");
         exit(EXIT_ERROR_ARGUMENTS);
     }
     
     // ################# VALIDATE ARGS ####################
     if (atoi(argv[1]) <= 0 || atoi(argv[2]) <= 0){
-        perro("Invalid Arguments!\n");
+        fprintf(stderr, "Invalid Arguments!\n");
         exit(EXIT_INVALID_ARGUMENTS);
     }
 
-    flag = 0;
     arbitro.nr_users = 0;
     arbitro.nr_jogos = 0;
     arbitro.duracao_campeonato = atoi(argv[1]);
     arbitro.tempo_espera = atoi(argv[2]);
+    arbitro.campeonato_on = 0;
 
     // ################# END VALIDATE ARGS ####################
 
@@ -618,7 +661,7 @@ int main (int argc, char *argv[])
     // ######### Arbitro PIPE ################
     if (access(ARBITRO_PIPE, F_OK) == 0)
     {
-        perro("Arbitro already in execution!\n");
+        fprintf(stderr, "Arbitro already in execution!\n");
         exit(EXIT_ERROR_PIPE);
     }
 
@@ -626,7 +669,7 @@ int main (int argc, char *argv[])
     // S_IRWXU - read,  write,  and  execute permission
     if (mkfifo(ARBITRO_PIPE, S_IRWXU) == -1)
     {
-        perro("Error: Creating Pipe! \n");
+        fprintf(stderr, "Error: Creating Pipe! \n");
         exit(EXIT_ERROR_PIPE);
     }
 
@@ -641,7 +684,7 @@ int main (int argc, char *argv[])
     // Verificar nr jogos > 0 in GAMEDIR
     if (arbitro.nr_jogos < 1)
     {
-        perro("Não existem jogos na pasta!\n A terminar..");
+        fprintf(stderr, "Não existem jogos na pasta!\n A terminar..");
         exit(EXIT_ERROR_NO_GAMES);
     }
 
@@ -662,12 +705,12 @@ int main (int argc, char *argv[])
     }
 
     // CREATE THREAD To Init CHAMPIONSHIP
-    /*if (pthread_create(&threadCampeonato, NULL, campeonato, (void *) &arbitro) != 0)
+    if (pthread_create(&threadCampeonato, NULL, campeonato, NULL) != 0)
     {
         printf("Erro a criar a thread!!!\nA terminar..\n");
         unlink(ARBITRO_PIPE);
         exit(EXIT_ERROR_CREATE_THREAD);
-    }*/
+    }
 
     //READ commands
     do
@@ -677,50 +720,18 @@ int main (int argc, char *argv[])
         arbitroCommands(cmd);
 
     } while (strcmp(cmd, "exit") != 0);
+   
+
+    pthread_kill(thread, NULL);
+    //pthread_join(threadCampeonato, NULL);
+    pthread_mutex_destroy(&mutex);
     
-
-    /*do {
-        
-        read(fd, &champ, sizeof(champ));
-        if (champ.action == LOGIN) {
-            user_login(champ.jogador.pid, champ.jogador.username);
-        }
-        // DEBUG
-        //printf("username %s pid : %d\n Action: %d\n\n", champ.jogador.username, champ.jogador.pid, champ.action);
-        printf("nr users : %d\n", nr_users);
-    } while (nr_users < 2);
-
-    // Wait tempo Max por mais jogadores 
-    while (sleep(arbitro.tempo_espera) > 0) {
-        read(fd, &champ, sizeof(champ));
-        if (champ.action == LOGIN) {
-            user_login(champ.jogador.pid, champ.jogador.username);
-        }
-    }*/
-
-    // ################## Inicio do Campeonato #################
-    //init_campeonato();
-
-
-/*
-    printf("Introduza o PID do processo a eliminar: ");
-    scanf("%d", &jogo.pid);
-
-    if (kill(jogo.pid, SIGUSR1) == -1) {
-        perro("Erro a enviar signal\n");
-    }
-
-    waitpid(jogo.pid, &jogo.pontuacao, 0);
-
-    // wait(&jogo.pontuacao);
-    if (WEXITSTATUS(jogo.pontuacao)) {
-        printf("Jogo Pontuação: %d", WEXITSTATUS(jogo.pontuacao));
-    }
-  
-*/
+    #ifdef DEBUG
+        printf("After thread Join\n");
+    #endif
 
     if (unlink(ARBITRO_PIPE) == -1){
-        perro("Error: Closing Pipe! \n");
+        fprintf(stderr, "Error: Closing Arbitro Pipe! \n");
         exit(EXIT_ERROR_PIPE);    
     }
 

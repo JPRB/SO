@@ -4,33 +4,49 @@
 void adicionarJogador(int pid, const char *username) {
 	
 	lista_jogadores[arbitro.nr_users].pid = pid;
-    strcpy(lista_jogadores[arbitro.nr_users].username, username);
+    lista_jogadores[arbitro.nr_users].sus_comunicacao = 0;
+	strcpy(lista_jogadores[arbitro.nr_users].username, username);
   	arbitro.nr_users++;
+
+	pthread_mutex_init(&lista_jogadores[arbitro.nr_users].mutex, NULL);
 }
 
 
 void listar_jogadores() {
+	char nome_jogo[MAXCHARS]= "\0";
 	for (int i = 0; i < arbitro.nr_users; i++) {
-		printf("Nome: %s Jogo: %s\n", lista_jogadores[i].username, lista_jogadores[i].jogo.nome);
+		strcpy(nome_jogo, lista_jogadores[i].jogo.nome);
+		printf("Nome: %s ", lista_jogadores[i].username);
+		if (strcmp(nome_jogo, "") != 0)
+			printf("Jogo %s\n", nome_jogo);
+		else
+		{
+			printf("\n");
+		}
+		
 	}
 }
 
 /*  1 - Removed 
 	0 - Not found*/
 int delete_user_by_PID(int pid) {
-  Jogador null_users = {0};
+	Jogador null_users = {0};
 
-  if (arbitro.nr_users > 0) {
-    if (arbitro.nr_users == 1) {
-    	lista_jogadores[0] = null_users;
-    	arbitro.nr_users--;
-    } else {
-    	int i;
-    	for (i = 0; i < arbitro.nr_users && lista_jogadores[i].pid != pid; i++);
-      	lista_jogadores[i] = lista_jogadores[arbitro.nr_users - 1];
-      	arbitro.nr_users--;
-    }
-  }
+	if (get_jogador_by_pid(pid) != NULL)
+	{
+		if (arbitro.nr_users > 0) {
+			if (arbitro.nr_users == 1) {
+    			lista_jogadores[0] = null_users;
+    		} else {
+	    		int i;
+    			for (i = 0; i < arbitro.nr_users && lista_jogadores[i].pid != pid; i++);
+      			lista_jogadores[i] = lista_jogadores[arbitro.nr_users - 1];
+    		}
+			arbitro.nr_users--;
+			return 1;
+  		}
+	}
+	return 0;
 }
 
 /*  
@@ -85,7 +101,7 @@ int get_pid_By_username(const char *username) {
 */
 Jogador *get_jogador_by_pid(int pid) {
 	for (int i = 0; i < arbitro.nr_users; i++)
-	{
+	{	
 		if (lista_jogadores[i].pid == pid){
 			return &lista_jogadores[i];
 		}

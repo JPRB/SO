@@ -1,4 +1,3 @@
-
 #include "main.h"
 
 
@@ -6,9 +5,10 @@ int logged = 0;
 // Condição de paragem de thread
 int stop = 0;
 
-ClientStruct myStruct;
 
+void trata_signal(int signum) {
 
+}
 
 int ServerExecution() {
     
@@ -49,15 +49,11 @@ void shutdown() {
     int fd;
     ClientStruct myStruct;
 
-    myStruct.pid = getpid();
     myStruct.action = LOGOUT;
 
-    sprintf(pipe, "pipe-%d", getpid());
+    write_Arbitro(myStruct);
 
-    fd = open(ARBITRO_PIPE, O_WRONLY, 0600);
-    
-    write(fd, &myStruct, sizeof(myStruct));
-    close(fd);
+    sprintf(pipe, "pipe-%d", getpid());
     unlink(pipe);
     exit(SHUTDOWN);
 }
@@ -94,6 +90,7 @@ void userCommands (const char* comm) {
     else
     {
         gameWrite(comm);
+        comm = '\0'; 
     }
     
     #ifdef DEBUG
@@ -112,7 +109,13 @@ void gameRead(ClientStruct myStruct)
     fflush(stdout);
 }
 
-void login (int *fd_arbitro) {
+void login (int *fd_arbitro, char name[MAXCHARS]) {
+    ClientStruct myStruct = {
+        .pid = getpid(),
+        .action = LOGIN,
+    };
+    
+    strcpy(myStruct.str, name);
 
     *fd_arbitro = open(ARBITRO_PIPE, O_WRONLY);
 
@@ -122,7 +125,6 @@ void login (int *fd_arbitro) {
         exit(EXIT_ERROR_PIPE);
     }
     
-    myStruct.action = LOGIN;
     int n = write(*fd_arbitro, &myStruct, sizeof(myStruct));
     #ifdef DEBUG
         printf("Escrevi Acao [%d] e info com [%d] bytes\n", myStruct.action, n);
@@ -190,10 +192,10 @@ void *receiver(void *arg)
 
 int main (int argc, char *argv[]) {
 
+    ClientStruct myStruct;
     pthread_t thread;
-
     char car, comm[50];
-    
+
     // nome do pipe
     char pipe[11];
 
@@ -201,6 +203,8 @@ int main (int argc, char *argv[]) {
 
     setbuf(stdout, NULL);
     
+    signal(SIGUSR1, trata_signal);
+
     if (argc != 2 ) {
         fprintf(stderr, "Missing arguments!\n");
         exit(EXIT_ERROR_ARGUMENTS);
@@ -224,8 +228,7 @@ int main (int argc, char *argv[]) {
 
    
     // ########### LOGIN ###############
-    strcpy(myStruct.str, argv[1]);
-    login (&fd_arbitro);
+    login (&fd_arbitro, argv[1]);
 
     fd_user = open(pipe, O_RDONLY);
 
@@ -239,7 +242,7 @@ int main (int argc, char *argv[]) {
     read(fd_user, &myStruct, sizeof(myStruct));
     
     #ifdef DEBUG
-        printf("N. da action: %d\n", myStruct.action);
+        printf("N. da action recebi, após Login: %d\n", myStruct.action);
     #endif
     
     if (myStruct.action == LOGGED)
